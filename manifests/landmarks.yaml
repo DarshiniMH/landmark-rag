@@ -1,0 +1,129 @@
+landmarks:
+- id: Ma
+  name: Machu Picchu
+  wikidata_qid: Q676203
+  wikipedia_title: Machu Picchu
+  aliases:
+  - Huayna Picchu
+  - Wayna Picchu
+  location:
+    lat: -13.163055555
+    lon: -72.545555555
+- id: Co
+  name: Colosseum
+  wikidata_qid: Q10285
+  wikipedia_title: Colosseum
+  aliases:
+  - Roman Coliseum
+  - Roman Colosseum
+  - Amphitheatrum Flavium
+  - Coliseum
+  - Flavian Amphitheater
+  location:
+    lat: 41.890277777
+    lon: 12.492222222
+- id: Gr
+  name: Great Wall of China
+  wikidata_qid: Q12501
+  wikipedia_title: Great Wall of China
+  aliases:
+  - Changcheng
+  - Great Wall
+  - The Great Wall of China
+  - Chinese Wall
+  - Wanli Changcheng
+  location:
+    lat: 40.416666666
+    lon: 116.083333333
+- id: Ta
+  name: Taj Mahal
+  wikidata_qid: Q9141
+  wikipedia_title: Taj Mahal
+  aliases:
+  - Crown of the Palace
+  location:
+    lat: 27.175
+    lon: 78.041944444
+- id: St
+  name: Statue of Liberty
+  wikidata_qid: Q9202
+  wikipedia_title: Statue of Liberty
+  aliases:
+  - Liberty Enlightening the World
+  - La Liberte eclairant la monde
+  - "La Libert\xE9 \xE9clairant le monde"
+  - The Statue of Liberty Enlightening the World
+  location:
+    lat: 40.689209166
+    lon: -74.044425277
+- id: Ei
+  name: Eiffel Tower
+  wikidata_qid: Q243
+  wikipedia_title: Eiffel Tower
+  aliases:
+  - La Tour Eiffel
+  - Tour Eiffel
+  location:
+    lat: 48.858296
+    lon: 2.294479
+
+evaluation_questions:
+  - id: Q01
+    type: "simple"   # simple | multi-hop | temporal | geo | ...
+    question: "What material is the Eiffel Tower made of?"
+    expected_answer_contains: ["wrought iron", "iron"]
+    landmark_refs: ["Ei"]
+
+  - id: Q02
+    type: "simple"
+    question: "Which UNESCO World Heritage Site in South America was rediscovered by Hiram Bingham in 1911?"
+    expected_answer_contains: ["Machu Picchu"]
+    landmark_refs: ["Ma"]
+
+  - id: Q03
+    type: "simple"
+    question: "In which Indian city is the Taj Mahal located?"
+    expected_answer_contains: ["Agra"]
+    landmark_refs: ["Ta"]
+
+  - id: Q04
+    type: "simple"
+    question: "Which Mughal emperor commissioned the construction of the Taj Mahal?"
+    expected_answer_contains: ["Shah Jahan"]
+    landmark_refs: ["Ta"]
+
+  - id: Q05
+    type: "simple"
+    question: "What ancient Chinese dynasty first began building sections of the Great Wall that form the core of today’s structure?"
+    expected_answer_contains: ["Ming", "dynasty"]
+    landmark_refs: ["Gr"]
+
+  - id: Q06
+    type: "simple"
+    question: "What is the approximate total length of the Great Wall of China according to UNESCO (in miles or kilometres)?"
+    expected_answer_contains: ["13", "000"]      # e.g., 13,000 miles / 21,000 km
+    landmark_refs: ["Gr"]
+
+  - id: Q07
+    type: "simple"
+    question: "Which Roman emperor oversaw the completion of the Colosseum?"
+    expected_answer_contains: ["Titus"]
+    landmark_refs: ["Co"]
+
+  - id: Q08
+    type: "simple"
+    question: "What was the original Latin name of the Colosseum?"
+    expected_answer_contains: ["Amphitheatrum Flavium", "Flavian Amphitheatre"]
+    landmark_refs: ["Co"]
+
+  - id: Q09
+    type: "simple"
+    question: "Which Peruvian region (administrative division) is home to Machu Picchu?"
+    expected_answer_contains: ["Cusco"]
+    landmark_refs: ["Ma"]
+
+  - id: Q10
+    type: "simple"
+    question: "On which island in New York Harbor is the Statue of Liberty situated?"
+    expected_answer_contains: ["Liberty Island", "Bedloe's Island"]
+    landmark_refs: ["St"]
