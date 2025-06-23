@@ -11,3 +11,6 @@ vector_db/
 .env
 
 data/raw/*.DS_Store
+
+# macOS Finder metadata
+*.DS_Store
