@@ -10,4 +10,4 @@ vector_db/
 # Secrets
 .env
 
-data/raw/
+data/raw/*.DS_Store
