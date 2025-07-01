@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """
-scripts/process_chunks.py
-
-Clean raw docs, prune with BM25, chunk with a recursive splitter,
-and write ALL chunks into a single JSONL file.
-
-Run:  python scripts/process_chunks.py
+Clean → BM25-prune → recursive-split every raw document and write them
+into data/processed/chunks.jsonl.
 """
 
-import json, hashlib, yaml, uuid
+import json, hashlib, re, yaml
 from pathlib import Path
 from tqdm import tqdm
 from nltk.tokenize import sent_tokenize, word_tokenize
@@ -16,89 +12,109 @@ from rank_bm25 import BM25Okapi
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import nltk
 
-# Ensure sentence tokenizer is available
 nltk.download("punkt", quiet=True)
 
-# ── Project imports ───────────────────────────────────────────────────
+# ── Project helpers ─────────────────────────────────────────────
 from cleaners import get_cleaner
 from cleaners.wikipedia import sections_with_context
+from cleaners.common import normalize_whitespace
 
-# ── Config ────────────────────────────────────────────────────────────
-RAW_DIR       = Path("data/raw")
-OUT_PATH      = Path("data/processed/chunks.jsonl")
-MANIFEST_FILE = Path("manifests/landmarks.yaml")
+RAW_DIR   = Path("data/raw")
+OUT_PATH  = Path("data/processed/chunks.jsonl")
+MANIFEST  = Path("manifests/landmarks.yaml")
 
-KEEP_RATIO     = 0.7    # keep top 70 % sentences in each section
+KEEP_RATIO     = 0.70
 CHUNK_SIZE     = 500
 CHUNK_OVERLAP  = 75
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size    = CHUNK_SIZE,
     chunk_overlap = CHUNK_OVERLAP,
-    separators    = ["\n\n", ". ", " ", ""],      # removed ", "
+    separators    = ["\n\n", ". ", " ", ""],
 )
 
-# ── Helper: BM25 prune one section ────────────────────────────────────
-def prune_section(article_title: str, section_title: str, body: str) -> str:
-    if not body.strip():
-        return ""
+# ── HTML heading splitter (very simple) ────────────────────────
+HEAD_RE = re.compile(r"\n\s*<h[1-6][^>]*>([^<]{3,80})</h[1-6]>", re.I)
 
+def sections_from_html(text: str):
+    hits = HEAD_RE.split(text)
+    if len(hits) < 3:
+        return [("Full text", text)]
+    secs = [("Introduction", hits[0].strip())] if hits[0].strip() else []
+    for i in range(1, len(hits)-1, 2):
+        secs.append((hits[i].strip(), hits[i+1].strip()))
+    return secs
+
+# ── BM25 pruning helper ────────────────────────────────────────
+def prune_section(article: str, title: str, body: str):
     sents = sent_tokenize(body)
-    if len(sents) < 4:          # tiny sections → keep all
+    if len(sents) <= 3:
         return body
+    bm25 = BM25Okapi([word_tokenize(s.lower()) for s in sents])
+    q    = word_tokenize(f"{article} {title}".lower())
+    scores = bm25.get_scores(q)
+    k = max(1, int(len(sents)*KEEP_RATIO))
+    idx = sorted(range(len(scores)), key=scores.__getitem__, reverse=True)[:k]
+    return " ".join(sents[i] for i in sorted(idx))
 
-    tokens = [word_tokenize(s.lower()) for s in sents]
-    bm25   = BM25Okapi(tokens)
-
-    query_tokens = word_tokenize(f"{article_title} {section_title}".lower())
-    scores = bm25.get_scores(query_tokens)
-
-    keep_n = int(len(sents) * KEEP_RATIO)
-    top_idx = sorted(range(len(scores)), key=scores.__getitem__, reverse=True)[:keep_n]
-    pruned = " ".join(sents[i] for i in sorted(top_idx))
-    return pruned
-
-# ── Main pipeline ─────────────────────────────────────────────────────
-def main() -> None:
-    print(" Processing raw Wikipedia docs …")
+# ── Main ───────────────────────────────────────────────────────
+def main():
+    print("⏳  processing raw docs …")
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    manifest = yaml.safe_load(MANIFEST_FILE.read_text())["landmarks"]
+    manifest = yaml.safe_load(MANIFEST.read_text())["landmarks"]
+    id2name  = {row["id"]: row["name"] for row in manifest}
 
     with OUT_PATH.open("w", encoding="utf-8") as out_f:
-        for lm in tqdm(manifest, desc="Landmarks"):
-            lid   = lm["id"]
-            title = lm["name"]
+        for lid, title in tqdm(id2name.items(), desc="Landmarks"):
+            lm_dir = RAW_DIR / lid
+            if not lm_dir.is_dir():
+                continue
 
-            raw_path = RAW_DIR / lid / "wikipedia.json"
-            if not raw_path.exists():
-                continue                                   # skip missing
+            for raw_path in lm_dir.iterdir():
+                # 1) choose cleaner
+                if raw_path.suffix == ".html":
+                    raw_text = raw_path.read_text("utf-8")
+                    cleaned  = get_cleaner("html")(raw_text)
+                    meta     = raw_path.with_suffix(".meta.json")
+                    origin   = json.loads(meta.read_text())["url"] if meta.exists() else ""
+                    sections = sections_from_html(cleaned)
+                    source   = "html"
 
-            raw = json.loads(raw_path.read_text())
-            cleaned = get_cleaner("wikipedia")(raw["content"])
-            sections = sections_with_context(cleaned)      # [(title, body),…]
+                elif raw_path.name == "wikipedia.json":
+                    raw_json = json.loads(raw_path.read_text("utf-8"))
+                    cleaned  = get_cleaner("wikipedia")(raw_json["content"])
+                    origin   = raw_json.get("url", "")
+                    sections = sections_with_context(cleaned)
+                    source   = "wikipedia"
 
-            for sec_title, sec_body in sections:
-                pruned = prune_section(title, sec_title, sec_body)
-                if not pruned:
+                else:
                     continue
 
-                text_for_split = f"Context: {title} - {sec_title}.\n\n{pruned}"
-                for chunk in splitter.split_text(text_for_split):
-                    # deterministic id: landmark + md5 hash of chunk
-                    cid = f"{lid}-{hashlib.md5(chunk.encode()).hexdigest()[:8]}"
+                # 2) section → prune → chunk
+                for sec_title, sec_body in sections:
+                    pruned = prune_section(title, sec_title, sec_body)
+                    if not pruned:
+                        continue
 
-                    out_f.write(json.dumps({
-                        "chunk_id"     : cid,
-                        "landmark_id"  : lid,
-                        "landmark_name": title,
-                        "source"       : "wikipedia",
-                        "section"      : sec_title,
-                        "origin_url"   : raw.get("url", ""),
-                        "text"         : chunk
-                    }, ensure_ascii=False) + "\n")
+                    prefix = f"Context: {title} - {sec_title}.\n\n"
+                    for chunk in splitter.split_text(prefix + pruned):
+                        url_hash = hashlib.md5(origin.encode()).hexdigest()[:6]  # NEW
 
-    print(f" Finished → {OUT_PATH}")
+                        slug  = re.sub(r"[^a-z0-9]+", "_", sec_title.lower())[:12]
+                        cid   = f"{lid}-{source}-{slug}-{url_hash}-{hashlib.md5(chunk.encode()).hexdigest()[:6]}"
+
+                        out_f.write(json.dumps({
+                            "chunk_id":       cid,
+                            "landmark_id":    lid,
+                            "landmark_name":  title,
+                            "source":         source,
+                            "section":        sec_title,
+                            "origin_url":     origin,
+                            "text":           chunk
+                        }, ensure_ascii=False) + "\n")
+
+    print(f"✅  wrote {OUT_PATH}")
 
 if __name__ == "__main__":
     main()

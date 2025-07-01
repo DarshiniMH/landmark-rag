@@ -19,7 +19,7 @@ URL_TPL   = "https://whc.unesco.org/en/list/{id}"   # trailing slash = canonical
 
 USER_AGENT = "LandmarkRAG/0.6 (+https://github.com/yourname/landmark-rag)"
 
-def main() -> None:
+def main():
     landmarks = yaml.safe_load(MANIFEST.read_text("utf-8"))["landmarks"]
 
     for lm in tqdm(landmarks, desc="UNESCO"):
@@ -38,10 +38,10 @@ def main() -> None:
             if status != 200:
                 print(f" ✗ {url} → HTTP {status}")
                 continue
-
-            # Simple guard: UNESCO pages with content have <div class="txt">
-            if not re.search(r'<div class="txt">', html, re.I):
-                print(f" ⚠ {url} looks like a stub; skipping")
+            
+            text_only = re.sub(r"<[^>]+>", " ", html)        # strip tags
+            if len(text_only) < 200:                         # stub page
+                print(f"⚠ {lid}: very short page; skipping")
                 continue
 
             save_raw_html(html, url, lm["id"], source="unesco")
