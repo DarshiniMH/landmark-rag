@@ -1,55 +1,104 @@
+#!/usr/bin/env python3
+"""
+scripts/process_chunks.py
+
+Clean raw docs, prune with BM25, chunk with a recursive splitter,
+and write ALL chunks into a single JSONL file.
+
+Run:  python scripts/process_chunks.py
+"""
+
+import json, hashlib, yaml, uuid
+from pathlib import Path
+from tqdm import tqdm
+from nltk.tokenize import sent_tokenize, word_tokenize
+from rank_bm25 import BM25Okapi
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import nltk
+
+# Ensure sentence tokenizer is available
+nltk.download("punkt", quiet=True)
+
+# ── Project imports ───────────────────────────────────────────────────
 from cleaners import get_cleaner
 from cleaners.wikipedia import sections_with_context
-from pathlib import Path
-import json, uuid, pathlib
 
+# ── Config ────────────────────────────────────────────────────────────
+RAW_DIR       = Path("data/raw")
+OUT_PATH      = Path("data/processed/chunks.jsonl")
+MANIFEST_FILE = Path("manifests/landmarks.yaml")
 
-RAW_DIR = Path("data/raw")
-OUT_PATH = Path("data/processed/chunks.jsonl")
+KEEP_RATIO     = 0.7    # keep top 70 % sentences in each section
+CHUNK_SIZE     = 500
+CHUNK_OVERLAP  = 75
 
-#Initializing the splitter
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size    = 400,
-    chunk_overlap = 50,
-    separators    = ["\n\n", ". ", " ", ""],  # paragraph → sentence → word → char
+    chunk_size    = CHUNK_SIZE,
+    chunk_overlap = CHUNK_OVERLAP,
+    separators    = ["\n\n", ". ", " ", ""],      # removed ", "
 )
 
-def process_one_file(id_code: str, source: str, path: Path, out_f):
-    raw = json.loads(path.read_text())
-    text = get_cleaner(source)(raw["content"])
+# ── Helper: BM25 prune one section ────────────────────────────────────
+def prune_section(article_title: str, section_title: str, body: str) -> str:
+    if not body.strip():
+        return ""
 
-    if source == "wikipedia":
-        sections = sections_with_context(text)
-    else:
-        sections = [("Full text", text)]
+    sents = sent_tokenize(body)
+    if len(sents) < 4:          # tiny sections → keep all
+        return body
 
-    for title, section in sections:
-        sections_prefixed = f"{title}\n{section}"
-        for chunk in splitter.split_text(sections_prefixed):
-            out_f.write(json.dumps({
-                "chunk_id"      : str(uuid.uuid4()),
-                "landmark_id"   : id_code,
-                "source"        : source,
-                "section:"      : title,    
-                "origin_url"    : raw["url"],
-                "text"          : chunk,
-                "fetched_at"    : raw["fetched_at"],
-            }, ensure_ascii=False) + "\n")
+    tokens = [word_tokenize(s.lower()) for s in sents]
+    bm25   = BM25Okapi(tokens)
 
+    query_tokens = word_tokenize(f"{article_title} {section_title}".lower())
+    scores = bm25.get_scores(query_tokens)
 
-def main():
+    keep_n = int(len(sents) * KEEP_RATIO)
+    top_idx = sorted(range(len(scores)), key=scores.__getitem__, reverse=True)[:keep_n]
+    pruned = " ".join(sents[i] for i in sorted(top_idx))
+    return pruned
+
+# ── Main pipeline ─────────────────────────────────────────────────────
+def main() -> None:
+    print(" Processing raw Wikipedia docs …")
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with OUT_PATH.open("w", encoding = "utf-8") as out_f:
-        for lm_dir in RAW_DIR.iterdir():
-            if not lm_dir.is_dir():
-                continue
-            id_code = lm_dir.name
-            wiki_file = lm_dir/"wikipedia.json"
-            if wiki_file.exists():
-                process_one_file(id_code, "wikipedia", wiki_file, out_f)
-                print(f"Processed {id_code} from Wikipedia.")
-    print(f"Processed chunks saved to {OUT_PATH}")
+
+    manifest = yaml.safe_load(MANIFEST_FILE.read_text())["landmarks"]
+
+    with OUT_PATH.open("w", encoding="utf-8") as out_f:
+        for lm in tqdm(manifest, desc="Landmarks"):
+            lid   = lm["id"]
+            title = lm["name"]
+
+            raw_path = RAW_DIR / lid / "wikipedia.json"
+            if not raw_path.exists():
+                continue                                   # skip missing
+
+            raw = json.loads(raw_path.read_text())
+            cleaned = get_cleaner("wikipedia")(raw["content"])
+            sections = sections_with_context(cleaned)      # [(title, body),…]
+
+            for sec_title, sec_body in sections:
+                pruned = prune_section(title, sec_title, sec_body)
+                if not pruned:
+                    continue
+
+                text_for_split = f"Context: {title} - {sec_title}.\n\n{pruned}"
+                for chunk in splitter.split_text(text_for_split):
+                    # deterministic id: landmark + md5 hash of chunk
+                    cid = f"{lid}-{hashlib.md5(chunk.encode()).hexdigest()[:8]}"
+
+                    out_f.write(json.dumps({
+                        "chunk_id"     : cid,
+                        "landmark_id"  : lid,
+                        "landmark_name": title,
+                        "source"       : "wikipedia",
+                        "section"      : sec_title,
+                        "origin_url"   : raw.get("url", ""),
+                        "text"         : chunk
+                    }, ensure_ascii=False) + "\n")
+
+    print(f" Finished → {OUT_PATH}")
 
 if __name__ == "__main__":
     main()

@@ -1,31 +1,296 @@
 landmarks:
-- id: Ma
-  name: Machu Picchu
-  wikidata_qid: Q676203
-  wikipedia_title: Machu Picchu
+- id: acropolis_of_athens
+  name: Acropolis of Athens
+  wikidata_qid: Q131013
+  wikipedia_title: Acropolis of Athens
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: -0500-01-01T00:00:00Z
+  annual_visitors: '3105604'
+  unesco_id: 404
+  lonely_planet_id: null
   aliases:
-  - Huayna Picchu
-  - Wayna Picchu
+  - Acropolis (Athens)
   location:
-    lat: -13.163055555
-    lon: -72.545555555
-- id: Co
+    lat: 37.971666666
+    lon: 23.726111111
+- id: alhambra
+  name: Alhambra
+  wikidata_qid: Q47476
+  wikipedia_title: Alhambra
+  official_website_url: https://www.alhambra-patronato.es/en
+  architect: null
+  style: Art of Al-Andalus
+  inception_date: '1238-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 314
+  lonely_planet_id: null
+  aliases:
+  - La Alhambra
+  - The Alhambra
+  - Alhambra fortress
+  location:
+    lat: 37.17634
+    lon: -3.58821
+- id: angkor_wat
+  name: Angkor Wat
+  wikidata_qid: Q43473
+  wikipedia_title: Angkor Wat
+  official_website_url: null
+  architect: null
+  style: Thai architecture
+  inception_date: '1200-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 668
+  lonely_planet_id: null
+  aliases:
+  - Temple City
+  - Vrah Visnuloka
+  - "Vrah Vi\u1E63\u1E47uloka"
+  - City of Temples
+  - Brah Bisnulok
+  location:
+    lat: 13.4125
+    lon: 103.866666666
+- id: big_ben
+  name: Big Ben
+  wikidata_qid: Q41225
+  wikipedia_title: Big Ben
+  official_website_url: https://www.parliament.uk/bigben/
+  architect: Augustus Pugin
+  style: Gothic Revival
+  inception_date: '1843-09-28T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Clock Tower
+  - Elizabeth Tower
+  - Big Ben Tower
+  - Saint Stephen Tower
+  - St Stephen's Tower
+  location:
+    lat: 51.50067
+    lon: -0.12457
+- id: brandenburg_gate
+  name: Brandenburg Gate
+  wikidata_qid: Q852425
+  wikipedia_title: Brandenburg Gate
+  official_website_url: https://www.brandenburg.de/
+  architect: Carl Gotthard Langhans
+  style: null
+  inception_date: '1990-10-03T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Land Brandenburg
+  - State of Brandenburg
+  location:
+    lat: 52.394555555
+    lon: 13.060333333
+- id: buckingham_palace
+  name: Buckingham Palace
+  wikidata_qid: Q42182
+  wikipedia_title: Buckingham Palace
+  official_website_url: https://www.royal.uk/royal-residences-buckingham-palace
+  architect: John Nash
+  style: Georgian architecture
+  inception_date: '1829-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Buckingham House
+  - Buck House
+  location:
+    lat: 51.501
+    lon: -0.142
+- id: burj_khalifa
+  name: Burj Khalifa
+  wikidata_qid: Q12495
+  wikipedia_title: Burj Khalifa
+  official_website_url: http://www.burjkhalifa.ae
+  architect: Adrian Smith
+  style: neo-futurism
+  inception_date: '2010-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - 1 Sheikh Mohammed bin Rashid Boulevard
+  - Burj Dubai
+  - Khalifa Tower
+  location:
+    lat: 25.197222222
+    lon: 55.274166666
+- id: cn_tower
+  name: CN Tower
+  wikidata_qid: Q134883
+  wikipedia_title: CN Tower
+  official_website_url: http://www.cntower.ca/
+  architect: John Andrews
+  style: null
+  inception_date: '1976-01-01T00:00:00Z'
+  annual_visitors: '1500000'
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Canada's National Tower
+  - Canadian National Tower
+  - Tour CN
+  location:
+    lat: 43.642752777
+    lon: -79.387147222
+- id: chichen_itza
+  name: Chichen Itza
+  wikidata_qid: Q5859
+  wikipedia_title: Chichen Itza
+  official_website_url: https://www.chichenitza.com/
+  architect: null
+  style: null
+  inception_date: '0455-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 483
+  lonely_planet_id: null
+  aliases:
+  - "Chich\xE9n Itz\xE1"
+  location:
+    lat: 20.683055555
+    lon: -88.568611111
+- id: christ_the_redeemer
+  name: Christ the Redeemer
+  wikidata_qid: Q79961
+  wikipedia_title: Christ the Redeemer (statue)
+  official_website_url: http://www.corcovado.com.br/
+  architect: Paul Landowski
+  style: null
+  inception_date: '1920-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 1100
+  lonely_planet_id: null
+  aliases:
+  - Christ the Redeemer statue
+  location:
+    lat: -22.951915648
+    lon: -43.210464122
+- id: colosseum
   name: Colosseum
   wikidata_qid: Q10285
   wikipedia_title: Colosseum
+  official_website_url: https://colosseo.it/en/area/the-colosseum/
+  architect: null
+  style: ancient Roman architecture
+  inception_date: '0082-01-01T00:00:00Z'
+  annual_visitors: '1633436'
+  unesco_id: 91
+  lonely_planet_id: null
   aliases:
-  - Roman Coliseum
-  - Roman Colosseum
   - Amphitheatrum Flavium
   - Coliseum
   - Flavian Amphitheater
+  - Flavian Amphitheatre
+  - Flavius amphitheatre
   location:
     lat: 41.890277777
     lon: 12.492222222
-- id: Gr
+- id: eiffel_tower
+  name: Eiffel Tower
+  wikidata_qid: Q243
+  wikipedia_title: Eiffel Tower
+  official_website_url: https://www.toureiffel.paris/it
+  architect: "St\xE9phen Sauvestre"
+  style: null
+  inception_date: '1889-03-31T00:00:00Z'
+  annual_visitors: '6207303'
+  unesco_id: 600
+  lonely_planet_id: null
+  aliases:
+  - ''
+  location:
+    lat: 48.858296
+    lon: 2.294479
+- id: forbidden_city
+  name: Forbidden City
+  wikidata_qid: Q80290
+  wikipedia_title: Forbidden City
+  official_website_url: https://intl.dpm.org.cn/?l=fr
+  architect: Kuai Xiang
+  style: null
+  inception_date: '1420-01-01T00:00:00Z'
+  annual_visitors: '19300000'
+  unesco_id: 439
+  lonely_planet_id: null
+  aliases:
+  - Gugong
+  - Old Palace (Beijing)
+  - Zijin Cheng
+  location:
+    lat: 39.915833333
+    lon: 116.390833333
+- id: golden_gate_bridge
+  name: Golden Gate Bridge
+  wikidata_qid: Q44440
+  wikipedia_title: Golden Gate Bridge
+  official_website_url: https://www.goldengate.org/bridge/
+  architect: Joseph Strauss
+  style: null
+  inception_date: '1937-05-27T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Golden Gate
+  - The Golden Gate
+  - The bridge that couldn't be built
+  location:
+    lat: 37.819722222
+    lon: -122.478611111
+- id: great_barrier_reef
+  name: Great Barrier Reef
+  wikidata_qid: Q7343
+  wikipedia_title: Great Barrier Reef
+  official_website_url: http://www.gbrmpa.gov.au/
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 154
+  lonely_planet_id: null
+  aliases:
+  - The Great Barrier Reef
+  location:
+    lat: -16.4
+    lon: 145.8
+- id: great_pyramid_of_giza
+  name: Great Pyramid of Giza
+  wikidata_qid: Q37200
+  wikipedia_title: Great Pyramid of Giza
+  official_website_url: null
+  architect: Hemiunu
+  style: ancient Egyptian architecture
+  inception_date: -2559-01-01T00:00:00Z
+  annual_visitors: null
+  unesco_id: 86
+  lonely_planet_id: null
+  aliases:
+  - Pyramid of Cheops
+  - Pyramid of Khufu
+  location:
+    lat: 29.97915
+    lon: 31.13422
+- id: great_wall_of_china
   name: Great Wall of China
   wikidata_qid: Q12501
   wikipedia_title: Great Wall of China
+  official_website_url: http://www.thegreatwall.com.cn/en
+  architect: null
+  style: null
+  inception_date: -0700-01-01T00:00:00Z
+  annual_visitors: '16000000'
+  unesco_id: 438
+  lonely_planet_id: null
   aliases:
   - Changcheng
   - Great Wall
@@ -35,19 +300,358 @@ landmarks:
   location:
     lat: 40.416666666
     lon: 116.083333333
-- id: Ta
-  name: Taj Mahal
-  wikidata_qid: Q9141
-  wikipedia_title: Taj Mahal
+- id: hagia_sophia
+  name: Hagia Sophia
+  wikidata_qid: Q12506
+  wikipedia_title: Hagia Sophia
+  official_website_url: null
+  architect: Anthemius of Tralles
+  style: basilica
+  inception_date: '0532-02-25T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 356
+  lonely_planet_id: null
   aliases:
-  - Crown of the Palace
+  - Great Church
+  - Ayasofya
+  - Church of Saint Sophia
+  - Church of the Holy Wisdom
+  - Hagia Sophia Mosque
   location:
-    lat: 27.175
-    lon: 78.041944444
-- id: St
+    lat: 41.008333333
+    lon: 28.98
+- id: hoover_dam
+  name: Hoover Dam
+  wikidata_qid: Q172822
+  wikipedia_title: Hoover Dam
+  official_website_url: http://www.usbr.gov/lc/hooverdam/
+  architect: Gordon Kaufmann
+  style: Art Deco architecture
+  inception_date: '1931-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Boulder Dam
+  location:
+    lat: 36.015833333
+    lon: -114.737777777
+- id: "iguaçu_falls"
+  name: "Iguaçu Falls"
+  wikidata_qid: Q36332
+  wikipedia_title: Iguazu Falls
+  official_website_url: https://iguazuargentina.com/
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 355
+  lonely_planet_id: null
+  aliases:
+  - Iguazu Falls
+  location:
+    lat: -25.695277777
+    lon: -54.436666666
+- id: lalibela
+  name: Lalibela
+  wikidata_qid: Q207590
+  wikipedia_title: Lalibela
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 18
+  lonely_planet_id: null
+  aliases:
+  - ''
+  location:
+    lat: 12.035561
+    lon: 39.046203
+- id: le_montsaintmichel
+  name: Le Mont-Saint-Michel
+  wikidata_qid: Q20892
+  wikipedia_title: Mont-Saint-Michel
+  official_website_url: https://mairie-lemontsaintmichel.fr/
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 80
+  lonely_planet_id: null
+  aliases:
+  - Mont-Michel
+  - Mont Saint-Michel
+  - Mont-Saint-Michel
+  - Mont-Libre
+  - Mont St. Michel
+  location:
+    lat: 48.635833333
+    lon: -1.510277777
+- id: leaning_tower_of_pisa
+  name: Leaning Tower of Pisa
+  wikidata_qid: Q39054
+  wikipedia_title: Leaning Tower of Pisa
+  official_website_url: https://www.opapisa.it/en/square-of-miracles/tower/
+  architect: Diotisalvi
+  style: Romanesque architecture
+  inception_date: '1173-01-01T00:00:00Z'
+  annual_visitors: '215099'
+  unesco_id: 395
+  lonely_planet_id: null
+  aliases:
+  - Pisa Tower
+  - The Leaning Tower of Pisa
+  - The Leaning Tower
+  - Tower of Pisa
+  - Leaning Tower
+  location:
+    lat: 43.72301
+    lon: 10.396624
+- id: machu_picchu
+  name: Machu Picchu
+  wikidata_qid: Q676203
+  wikipedia_title: Machu Picchu
+  official_website_url: http://www.machupicchu.gob.pe/
+  architect: null
+  style: null
+  inception_date: '1450-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 274
+  lonely_planet_id: null
+  aliases:
+  - Huayna Picchu
+  - Wayna Picchu
+  location:
+    lat: -13.163055555
+    lon: -72.545555555
+- id: marina_bay_sands
+  name: Marina Bay Sands
+  wikidata_qid: Q548679
+  wikipedia_title: Marina Bay Sands
+  official_website_url: https://www.marinabaysands.com
+  architect: Moshe Safdie
+  style: null
+  inception_date: '2010-06-23T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Marina Bay Sands Singapore (Staycation Approved)
+  - Marina Bay Sands, Singapore
+  - Marina Sands
+  - Marina Bay Sands Singapore
+  location:
+    lat: 1.2825
+    lon: 103.86
+- id: milford_sound_piopiotahi
+  name: Milford Sound / Piopiotahi
+  wikidata_qid: Q187197
+  wikipedia_title: Milford Sound
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 551
+  lonely_planet_id: null
+  aliases:
+  - Milford Sound
+  - Piopiotahi
+  location:
+    lat: -44.616666666
+    lon: 167.866666666
+- id: mount_fuji
+  name: Mount Fuji
+  wikidata_qid: Q39231
+  wikipedia_title: Mount Fuji
+  official_website_url: https://www.fujisan.ne.jp/
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 1418
+  lonely_planet_id: null
+  aliases:
+  - Mt Fuji
+  - Fujisan
+  - Mt. Fuji
+  - Fujiyama
+  - Fuji-san
+  location:
+    lat: 35.360555555
+    lon: 138.7275
+- id: mount_kilimanjaro
+  name: Mount Kilimanjaro
+  wikidata_qid: Q7296
+  wikipedia_title: Mount Kilimanjaro
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 403
+  lonely_planet_id: null
+  aliases:
+  - Kilimanjaro
+  - Kilima-Njaro
+  - Mount Kilimawn
+  - Mt Kilimanjaro
+  - Mt. Kilimanjaro
+  location:
+    lat: -3.066666666
+    lon: 37.359166666
+- id: mount_rushmore
+  name: Mount Rushmore
+  wikidata_qid: Q83497
+  wikipedia_title: Mount Rushmore
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Mt. Rushmore
+  location:
+    lat: 43.878947222
+    lon: -103.459825
+- id: niagara_falls
+  name: Niagara Falls
+  wikidata_qid: Q274120
+  wikipedia_title: Niagara Falls, Ontario
+  official_website_url: https://niagarafalls.ca/
+  architect: null
+  style: null
+  inception_date: '1903-06-12T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - Niagara Falls, ON
+  - Niagara Falls, Ontario
+  location:
+    lat: 43.116666666
+    lon: -79.066666666
+- id: panama_canal
+  name: Panama Canal
+  wikidata_qid: Q7350
+  wikipedia_title: Panama Canal
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - ''
+  location:
+    lat: 9.12
+    lon: -79.75
+- id: petra
+  name: Petra
+  wikidata_qid: Q5788
+  wikipedia_title: Petra
+  official_website_url: http://www.visitpetra.jo/
+  architect: null
+  style: null
+  inception_date: -0799-01-01T00:00:00Z
+  annual_visitors: null
+  unesco_id: 326
+  lonely_planet_id: null
+  aliases:
+  - Petra, Jordan
+  - Raqmu
+  location:
+    lat: 30.328888888
+    lon: 35.440277777
+- id: petronas_towers
+  name: Petronas Towers
+  wikidata_qid: Q83063
+  wikipedia_title: Petronas Towers
+  official_website_url: https://www.petronastwintowers.com.my/
+  architect: "C\xE9sar Pelli"
+  style: postmodern architecture
+  inception_date: '1993-03-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - KLCC Tower
+  - KLCC Twin Towers
+  - Menara Berkembar Petronas
+  - Petronas Twin Towers
+  - The Petronas Towers
+  location:
+    lat: 3.157777777
+    lon: 101.711666666
+- id: "sagrada_fam\xEDlia"
+  name: "Sagrada Fam\xEDlia"
+  wikidata_qid: Q2470217
+  wikipedia_title: "Sagrada Fam\xEDlia (neighborhood)"
+  official_website_url: https://sagradafamilia.org
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 320
+  lonely_planet_id: null
+  aliases:
+  - Sagrada Familia
+  location:
+    lat: 41.403561
+    lon: 2.174347
+- id: saint_peters_basilica
+  name: Saint Peter's Basilica
+  wikidata_qid: Q12512
+  wikipedia_title: St. Peter's Basilica
+  official_website_url: https://www.vatican.va/various/basiliche/san_pietro/index_it.htm
+  architect: Raphael
+  style: baroque architecture
+  inception_date: '1506-04-28T00:00:00Z'
+  annual_visitors: '11000000'
+  unesco_id: 286
+  lonely_planet_id: null
+  aliases:
+  - St Peter's
+  - St. Peter's
+  - Saint Peter's
+  - St. Peter's Basilica
+  - Basilica of Saint Peter
+  location:
+    lat: 41.902222222
+    lon: 12.453416666
+- id: st_basils_cathedral
+  name: St. Basil's Cathedral
+  wikidata_qid: Q129846
+  wikipedia_title: Saint Basil's Cathedral
+  official_website_url: https://shm.ru/museum/hvb/
+  architect: Postnik Yakovlev
+  style: tented-roof church
+  inception_date: '1555-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: 545
+  lonely_planet_id: null
+  aliases:
+  - Cathedral of the Intercession of the Most Holy Theotokos on the Moat
+  - Cathedral of Vasily the Blessed
+  - Saint Basil's Cathedral
+  location:
+    lat: 55.7525
+    lon: 37.623055555
+- id: statue_of_liberty
   name: Statue of Liberty
   wikidata_qid: Q9202
   wikipedia_title: Statue of Liberty
+  official_website_url: http://www.nps.gov/stli/index.htm
+  architect: "Eug\xE8ne Viollet-le-Duc"
+  style: Neoclassical architecture
+  inception_date: '1886-01-01T00:00:00Z'
+  annual_visitors: '4200000'
+  unesco_id: 307
+  lonely_planet_id: null
   aliases:
   - Liberty Enlightening the World
   - La Liberte eclairant la monde
@@ -56,74 +660,172 @@ landmarks:
   location:
     lat: 40.689209166
     lon: -74.044425277
-- id: Ei
-  name: Eiffel Tower
-  wikidata_qid: Q243
-  wikipedia_title: Eiffel Tower
+- id: stonehenge
+  name: Stonehenge
+  wikidata_qid: Q39671
+  wikipedia_title: Stonehenge
+  official_website_url: https://www.english-heritage.org.uk/stonehenge
+  architect: null
+  style: prehistoric Britain
+  inception_date: -1848-01-01T00:00:00Z
+  annual_visitors: null
+  unesco_id: 373
+  lonely_planet_id: null
   aliases:
-  - La Tour Eiffel
-  - Tour Eiffel
+  - Stonehenge, the Avenue, and Three Barrows Adjacent to the Avenue Forming Part
+    of a Round Barrow Cemetery on Countess Farm
   location:
-    lat: 48.858296
-    lon: 2.294479
-
-evaluation_questions:
-  - id: Q01
-    type: "simple"   # simple | multi-hop | temporal | geo | ...
-    question: "What material is the Eiffel Tower made of?"
-    expected_answer_contains: ["wrought iron", "iron"]
-    landmark_refs: ["Ei"]
-
-  - id: Q02
-    type: "simple"
-    question: "Which UNESCO World Heritage Site in South America was rediscovered by Hiram Bingham in 1911?"
-    expected_answer_contains: ["Machu Picchu"]
-    landmark_refs: ["Ma"]
-
-  - id: Q03
-    type: "simple"
-    question: "In which Indian city is the Taj Mahal located?"
-    expected_answer_contains: ["Agra"]
-    landmark_refs: ["Ta"]
-
-  - id: Q04
-    type: "simple"
-    question: "Which Mughal emperor commissioned the construction of the Taj Mahal?"
-    expected_answer_contains: ["Shah Jahan"]
-    landmark_refs: ["Ta"]
-
-  - id: Q05
-    type: "simple"
-    question: "What ancient Chinese dynasty first began building sections of the Great Wall that form the core of today’s structure?"
-    expected_answer_contains: ["Ming", "dynasty"]
-    landmark_refs: ["Gr"]
-
-  - id: Q06
-    type: "simple"
-    question: "What is the approximate total length of the Great Wall of China according to UNESCO (in miles or kilometres)?"
-    expected_answer_contains: ["13", "000"]      # e.g., 13,000 miles / 21,000 km
-    landmark_refs: ["Gr"]
-
-  - id: Q07
-    type: "simple"
-    question: "Which Roman emperor oversaw the completion of the Colosseum?"
-    expected_answer_contains: ["Titus"]
-    landmark_refs: ["Co"]
-
-  - id: Q08
-    type: "simple"
-    question: "What was the original Latin name of the Colosseum?"
-    expected_answer_contains: ["Amphitheatrum Flavium", "Flavian Amphitheatre"]
-    landmark_refs: ["Co"]
-
-  - id: Q09
-    type: "simple"
-    question: "Which Peruvian region (administrative division) is home to Machu Picchu?"
-    expected_answer_contains: ["Cusco"]
-    landmark_refs: ["Ma"]
-
-  - id: Q10
-    type: "simple"
-    question: "On which island in New York Harbor is the Statue of Liberty situated?"
-    expected_answer_contains: ["Liberty Island", "Bedloe's Island"]
-    landmark_refs: ["St"]
+    lat: 51.178888888
+    lon: -1.826111111
+- id: sydney_opera_house
+  name: Sydney Opera House
+  wikidata_qid: Q45178
+  wikipedia_title: Sydney Opera House
+  official_website_url: https://sydneyoperahouse.com
+  architect: "J\xF8rn Utzon"
+  style: expressionist architecture
+  inception_date: '1973-01-01T00:00:00Z'
+  annual_visitors: '7000000'
+  unesco_id: 166
+  lonely_planet_id: null
+  aliases:
+  - Sydney Opera
+  location:
+    lat: -33.857058
+    lon: 151.214897
+- id: table_mountain
+  name: Table Mountain
+  wikidata_qid: Q213360
+  wikipedia_title: Table Mountain
+  official_website_url: http://www.sanparks.org/parks/table_mountain
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 1007
+  lonely_planet_id: null
+  aliases:
+  - ''
+  location:
+    lat: -33.96216
+    lon: 18.41352
+- id: taj_mahal
+  name: Taj Mahal
+  wikidata_qid: Q9141
+  wikipedia_title: Taj Mahal
+  official_website_url: https://www.tajmahal.gov.in/
+  architect: Ahmad Lahori
+  style: architecture of Iran
+  inception_date: '1631-01-01T00:00:00Z'
+  annual_visitors: '6532366'
+  unesco_id: 252
+  lonely_planet_id: null
+  aliases:
+  - Crown of the Palace
+  location:
+    lat: 27.175
+    lon: 78.041944444
+- id: terracotta_army
+  name: Terracotta Army
+  wikidata_qid: Q47672
+  wikipedia_title: Terracotta Army
+  official_website_url: https://bmy.com.cn
+  architect: null
+  style: null
+  inception_date: -0247-01-01T00:00:00Z
+  annual_visitors: null
+  unesco_id: 441
+  lonely_planet_id: null
+  aliases:
+  - Terracotta warriors
+  - mausoleum of Emperor Qin Shihuang
+  location:
+    lat: 34.385
+    lon: 109.273055555
+- id: the_great_sphinx
+  name: The Great Sphinx
+  wikidata_qid: Q130958
+  wikipedia_title: Great Sphinx of Giza
+  official_website_url: null
+  architect: null
+  style: ancient Egyptian architecture
+  inception_date: -2559-01-01T00:00:00Z
+  annual_visitors: null
+  unesco_id: 86
+  lonely_planet_id: null
+  aliases:
+  - Sphinx
+  - Great Sphinx of Giza
+  location:
+    lat: 29.97527
+    lon: 31.13768
+- id: tikal
+  name: Tikal
+  wikidata_qid: Q181172
+  wikipedia_title: Tikal
+  official_website_url: http://www.tikalpark.com/
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 64
+  lonely_planet_id: null
+  aliases:
+  - Mutal
+  - Mutul
+  - Yax Mutul
+  location:
+    lat: 17.222094444
+    lon: -89.623613888
+- id: tower_bridge
+  name: Tower Bridge
+  wikidata_qid: Q83125
+  wikipedia_title: Tower Bridge
+  official_website_url: https://www.towerbridge.org.uk/
+  architect: Horace Jones
+  style: Gothic Revival
+  inception_date: '1886-01-01T00:00:00Z'
+  annual_visitors: null
+  unesco_id: null
+  lonely_planet_id: null
+  aliases:
+  - ''
+  location:
+    lat: 51.505555555
+    lon: -0.075277777
+- id: uluru
+  name: Uluru
+  wikidata_qid: Q33910
+  wikipedia_title: Uluru
+  official_website_url: http://www.environment.gov.au/parks/uluru/index.html
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 447
+  lonely_planet_id: null
+  aliases:
+  - Ayers Rock
+  - Uluru / Ayers Rock
+  - Uluru/Ayers Rock
+  location:
+    lat: -25.345
+    lon: 131.036111111
+- id: victoria_falls
+  name: Victoria Falls
+  wikidata_qid: Q43278
+  wikipedia_title: Victoria Falls
+  official_website_url: null
+  architect: null
+  style: null
+  inception_date: null
+  annual_visitors: null
+  unesco_id: 509
+  lonely_planet_id: null
+  aliases:
+  - Mosi-oa-Tunya
+  - Mosi-oa-Tunya / Victoria Falls
+  location:
+    lat: -17.924777777
+    lon: 25.858055555
+evaluation_questions: []
