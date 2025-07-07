@@ -828,4 +828,214 @@ landmarks:
   location:
     lat: -17.924777777
     lon: 25.858055555
-evaluation_questions: []
+
+
+evaluation_questions:
+  # ───────── Simple (factoid) ──────────────────────────────────────────
+  - id: S01
+    type: simple
+    question: "What material is the Statue of Liberty made of?"
+    expected_answer_contains: ["copper"]
+    landmark_refs: ["statue_of_liberty"]
+
+  - id: S02
+    type: simple
+    question: "In which city is Christ the Redeemer located?"
+    expected_answer_contains: ["Rio", "Rio de Janeiro"]
+    landmark_refs: ["christ_the_redeemer"]
+
+  - id: S03
+    type: simple
+    question: "Which country is home to the Great Wall of China?"
+    expected_answer_contains: ["China"]
+    landmark_refs: ["great_wall_of_china"]
+
+  - id: S04
+    type: simple
+    question: "What is the height of the Burj Khalifa in metres?"
+    expected_answer_contains: ["828"]
+    landmark_refs: ["burj_khalifa"]
+
+  - id: S05
+    type: simple
+    question: "Which river flows beside the Taj Mahal?"
+    expected_answer_contains: ["Yamuna"]
+    landmark_refs: ["taj_mahal"]
+
+  - id: S06
+    type: simple
+    question: "The Golden Gate Bridge spans which strait or bay?"
+    expected_answer_contains: ["Golden Gate", "San Francisco Bay"]
+    landmark_refs: ["golden_gate_bridge"]
+
+  - id: S07
+    type: simple
+    question: "Uluru is primarily composed of which type of rock?"
+    expected_answer_contains: ["sandstone"]
+    landmark_refs: ["uluru"]
+
+  - id: S08
+    type: simple
+    question: "What is the religious denomination of St.Peter's Basilica?"
+    expected_answer_contains: ["Catholic", "Roman Catholic"]
+    landmark_refs: ["saint_peters_basilica"]
+
+  - id: S09
+    type: simple
+    question: "The CN Tower is located in which Canadian city?"
+    expected_answer_contains: ["Toronto"]
+    landmark_refs: ["cn_tower"]
+
+  - id: S10
+    type: simple
+    question: "Petra was carved by which ancient civilization?"
+    expected_answer_contains: ["Nabataean"]
+    landmark_refs: ["petra"]
+
+  # ───────── Multi‑hop ────────────────────────────────────────────────
+  - id: M01
+    type: multi-hop
+    question: "Which emperor commissioned the Colosseum, and in which century was its construction begun?"
+    expected_answer_contains: ["Vespasian", "1st century"]
+    landmark_refs: ["colosseum"]
+
+  - id: M02
+    type: multi-hop
+    question: "Who designed the Eiffel Tower, and for which major exposition was it built?"
+    expected_answer_contains: ["Gustave Eiffel", "1889", "Exposition Universelle"]
+    landmark_refs: ["eiffel_tower"]
+
+  - id: M03
+    type: multi-hop
+    question: "Name the architect of the Sydney Opera House and the country he was born in."
+    expected_answer_contains: ["Jørn Utzon", "Denmark"]
+    landmark_refs: ["sydney_opera_house"]
+
+  - id: M04
+    type: multi-hop
+    question: "Which pharaoh was buried in the Great Pyramid of Giza, and approximately how tall is the pyramid today?"
+    expected_answer_contains: ["Khufu", "146", "138"]
+    landmark_refs: ["great_pyramid_of_giza"]
+
+  - id: M05
+    type: multi-hop
+    question: "Identify the year Machu Picchu was designated a UNESCO World Heritage Site and the explorer who popularised it."
+    expected_answer_contains: ["1983", "Hiram Bingham"]
+    landmark_refs: ["machu_picchu"]
+
+  - id: M06
+    type: multi-hop
+    question: "The Terracotta Army was created to guard which emperor, and roughly how many statues have been excavated?"
+    expected_answer_contains: ["Qin Shi Huang", "8000", "8000"]
+    landmark_refs: ["terracotta_army"]
+
+  - id: M07
+    type: multi-hop
+    question: "Which river feeds Niagara Falls, and what two countries share the falls?"
+    expected_answer_contains: ["Niagara River", "Canada", "United States"]
+    landmark_refs: ["niagara_falls"]
+
+  - id: M08
+    type: multi-hop
+    question: "Hoover Dam creates which reservoir, and in which two states does the dam sit?"
+    expected_answer_contains: ["Lake Mead", "Nevada", "Arizona"]
+    landmark_refs: ["hoover_dam"]
+
+  - id: M09
+    type: multi-hop
+    question: "The Leaning Tower of Pisa is the bell tower of which cathedral, and what is the tower's current tilt in degrees?"
+    expected_answer_contains: ["Cathedral of Pisa", "Duomo", "4"]
+    landmark_refs: ["leaning_tower_of_pisa"]
+
+  - id: M10
+    type: multi-hop
+    question: "Name the god to whom Angkor Wat was originally dedicated and the current predominant religion of the temple."
+    expected_answer_contains: ["Vishnu", "Buddhist", "Buddhism"]
+    landmark_refs: ["angkor_wat"]
+
+  # ───────── Temporal ────────────────────────────────────────────────
+  - id: T01
+    type: temporal
+    question: "Was the Great Wall of China completed before or after the 15th century?"
+    expected_answer_contains: ["before"]
+    landmark_refs: ["great_wall_of_china"]
+
+  - id: T02
+    type: temporal
+    question: "In what year did construction of Marina Bay Sands finish?"
+    expected_answer_contains: ["2010"]
+    landmark_refs: ["marina_bay_sands"]
+
+  - id: T03
+    type: temporal
+    question: "The Acropolis of Athens was inscribed as a UNESCO World Heritage Site in which year?"
+    expected_answer_contains: ["1987"]
+    landmark_refs: ["acropolis_of_athens"]
+
+  - id: T04
+    type: temporal
+    question: "Did the Great Barrier Reef achieve UNESCO status before or after 1985?"
+    expected_answer_contains: ["before", "1981"]
+    landmark_refs: ["great_barrier_reef"]
+
+  - id: T05
+    type: temporal
+    question: "During which century was Hagia Sophia converted into a mosque for the first time?"
+    expected_answer_contains: ["15th", "1453"]
+    landmark_refs: ["hagia_sophia"]
+
+  - id: T06
+    type: temporal
+    question: "When was the CN Tower completed?"
+    expected_answer_contains: ["1976"]
+    landmark_refs: ["cn_tower"]
+
+  - id: T07
+    type: temporal
+    question: "The Sagrada Família began construction in which decade of the 19th century?"
+    expected_answer_contains: ["188"]
+    landmark_refs: ["sagrada_fam\xEDlia"]
+
+  - id: T08
+    type: temporal
+    question: "Was Stonehenge constructed before or after the Pyramids of Giza?"
+    expected_answer_contains: ["before"]
+    landmark_refs: ["stonehenge"]
+
+  - id: T09
+    type: temporal
+    question: "In which year did the Panama Canal open to shipping?"
+    expected_answer_contains: ["1914"]
+    landmark_refs: ["panama_canal"]
+
+  - id: T10
+    type: temporal
+    question: "Mount Fuji last erupted in which year?"
+    expected_answer_contains: ["1707"]
+    landmark_refs: ["mount_fuji"]
+
+# ───────── Negative & Ambiguous (Robustness Test) ──────────────────
+  - id: N01
+    type: negative
+    question: "Which famous painting is housed inside the Eiffel Tower's main gallery?"
+    expected_answer_contains: ["does not have", "no gallery", "I don't know"]
+    landmark_refs: ["eiffel_tower"]
+
+  - id: N02
+    type: negative
+    question: "What was the name of the horse that Gustave Eiffel rode to the opening ceremony?"
+    expected_answer_contains: ["do not contain", "not available", "I don't know"]
+    landmark_refs: ["eiffel_tower"]
+
+  - id: N03
+    type: ambiguous
+    question: "What is the history of the pyramid?"
+    expected_answer_contains: ["Which pyramid", "Great Pyramid of Giza", "Chichen Itza"]
+    landmark_refs: ["great_pyramid_of_giza", "chichen_itza"]
+
+  # ───────── Deeper Multi-hop (Synthesis Test) ───────────────────────
+  - id: M11
+    type: multi-hop
+    question: "Which was completed first, the Golden Gate Bridge or the Hoover Dam, and what major historical event was happening in the United States during their construction?"
+    expected_answer_contains: ["Hoover Dam", "1936", "Golden Gate Bridge", "1937", "Great Depression"]
+    landmark_refs: ["golden_gate_bridge", "hoover_dam"]

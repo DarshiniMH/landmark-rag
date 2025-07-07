@@ -1,6 +1,32 @@
 import openai
+import chromadb, torch
+from functools import lru_cache
+from sentence_transformers import SentenceTransformer, CrossEncoder
+import numpy as np
 
-def expand_query(query: str, llm_client: openai.OpenAI) -> str:
+DB_PATH = "vector_db"
+COLL_NAME = "landmarks"
+MODEL = "BAAI/bge-base-en-v1.5"
+
+@lru_cache
+def get_reranker():
+    return CrossEncoder("BAAI/bge-reranker-base")
+
+@lru_cache
+def get_embedder():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer(MODEL, device = device)
+    model.max_seq_length = 512
+    return model
+
+@lru_cache
+def get_collections():
+    client = chromadb.PersistentClient(path=DB_PATH)
+    collection = client.get_or_create_collection(COLL_NAME)
+    return collection
+
+
+def expand_query(query: str, llm_client: openai.OpenAI | None = None) -> str:
     """
     Uses the LLM to expand a user query with thematic keywords for better retrieval.
     """
@@ -17,6 +43,8 @@ Now, analyze the following user query and provide the thematic keywords.
 User Query: "{query}"
 
 Thematic Keywords:"""
+    if llm_client is None:
+        llm_client = openai.OpenAI()
 
     try:
         response = llm_client.chat.completions.create(
@@ -32,6 +60,23 @@ Thematic Keywords:"""
         print(f"Warning: Query expansion failed with error: {e}. Using original query.")
         return query
 
+
+
+def rerank(query, docs, ids, top_k):
+    """
+    Reranks the retrieved documents using a cross-encoder model.
+    """
+    # Prepare the inputs for the reranker
+    rerank_inputs = [[query, doc] for doc in docs]
+    
+    # Get rerank scores
+    rerank_scores = get_reranker().predict(rerank_inputs, convert_to_numpy=True)
+    
+    # Sort by scores and get top-k results
+    sorted_indices = np.argsort(rerank_scores)[::-1][:top_k]
+    
+    return [docs[i] for i in sorted_indices], [ids[i] for i in sorted_indices]
+
 def retrieve_context(query: str, embedder, collection, n_results: int) -> list[dict]:
     """
     Embeds the query and retrieves the top-k most relevant document chunks from ChromaDB.
@@ -41,17 +86,28 @@ def retrieve_context(query: str, embedder, collection, n_results: int) -> list[d
 
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=n_results,
-        include=["documents", "metadatas"] # We need both text and metadata
+        n_results=25,
+        include=["documents", "metadatas", "ids"] # We need both text and metadata
     )
     
+    docs = results["documents"][0]
+    ids = results["ids"][0]
+    metas = results["metadatas"][0]
     # The result from Chroma is a list of lists, we only need the first one
-    retrieved_chunks = []
+    top_docs, top_ids = rerank(query, docs, ids, n_results)
+
+    out = []
+    for cid in top_ids:
+        i = ids.index(cid)
+        out.append({
+            "text": docs[i],
+            "meta": metas[i]  # Include metadata for context
+        })
     # Using zip is a clean way to combine the parallel lists from Chroma
-    for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-        retrieved_chunks.append({"text": doc, "meta": meta})
+    #for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+     #   retrieved_chunks.append({"text": doc, "meta": meta})
         
-    return retrieved_chunks
+    return out
 
 def build_prompt(query: str, context_chunks: list[dict]) -> str:
     """
@@ -65,7 +121,7 @@ def build_prompt(query: str, context_chunks: list[dict]) -> str:
     # Format each chunk with its source metadata for the LLM to see
     context_for_prompt = ""
     for i, chunk in enumerate(context_chunks, 1):
-        source_info = chunk["meta"].get("source", "Unknown Source")
+        source_info = chunk["meta"].get("landmark_name", "Unknown Source")
         context_for_prompt += f"--- Source [{i}] (from {source_info}):\n{chunk['text']}\n\n"
 
     # The robust prompt template

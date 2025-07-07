@@ -29,7 +29,7 @@ QIDS = [
   "Q2470217", # Sagrada Família
   "Q129846", # Saint Basil's Cathedral
   "Q20892", # Mont Saint-Michel
-  "Q1208", # brandenburg Gate
+  "Q82425", # Brandenburg Gate
   "Q12512", # St. Peter's Basilica
   "Q47476", # Alhambra
   "Q12506", # Hagia Sophia
