@@ -7,6 +7,7 @@ __pycache__/
 data/
 vector_db/
 vector_db.old*/
+vector_db_*/
 
 # Secrets
 .env

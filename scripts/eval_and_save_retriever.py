@@ -1,8 +1,10 @@
 import yaml
 import json
 import pathlib
+from rank_bm25 import BM25Okapi
 from utils.rag_utils import get_embedder, get_collections, rerank, expand_query
 from sentence_transformers import SentenceTransformer
+import numpy as np
 
 # Load configurations
 DB_PATH = "vector_db"
@@ -11,7 +13,7 @@ MANIFEST_PATH = "manifests/landmarks.yaml"
 REL_PATH = "data/relevance_index.json"
 OUTPUT_DIR = "precision_recall_results"
 K = 7
-CHUNK = 500
+CHUNK = 700
 
 
 
@@ -41,12 +43,31 @@ def eval_retriever(k_val: int) -> dict:
         query_embedding =  embedder.encode(q_text, normalize_embeddings = True)
         retrieved = collection.query(
             query_embeddings = [query_embedding.tolist()],
-            n_results = 50,
-            include = ["documents","metadatas"]
+            n_results = 200,
+            include = ["documents","metadatas", "distances"]
         )
         docs = retrieved["documents"][0]
         ids = retrieved["ids"][0]
         metas = retrieved["metadatas"][0]
+        dist = np.array(retrieved["distances"][0])
+
+        dense_sim = 1.0 - dist  # Convert distances to similarity scores
+        dense   = (dense_sim - dense_sim.min()) / (dense_sim.ptp() + 1e-9)
+
+        # lexical component using BM25
+        tokens = [doc.split() for doc in docs]
+        bm25 = BM25Okapi(tokens)
+        bm_raw = bm25.get_scores(q_text.split())
+        bm_norm = (bm_raw - bm_raw.min()) / (bm_raw.ptp()+ 1e-9)
+
+        # Combine BM25 scores with Chroma results
+        alpha = 0.8 
+        hybrid = alpha * np.array(dense)+(1-alpha) * bm_norm
+        top_idx = np.argsort(hybrid)[::-1][:40]
+
+        docs = [docs[i] for i in top_idx]
+        ids = [ids[i] for i in top_idx]
+
     # The result from Chroma is a list of lists, we only need the first one
         top_docs, top_ids = rerank(q_text, docs, ids, k_val)
 
@@ -100,7 +121,7 @@ if __name__ == "__main__":
     print("Generating report...")
     report = generate_report(eval_results, K)
 
-    output_path = pathlib.Path(OUTPUT_DIR) / f"retriever_eval_with_reranker40_query_expanded_k{K}_chunk{CHUNK}.md"
+    output_path = pathlib.Path(OUTPUT_DIR) / f"retriever_eval_with_hybrid_alpha_0.8_reranker40_query_expanded_k{K}_chunk{CHUNK}.md"
     output_path.write_text(report, encoding="utf-8")
 
     print("\n--- Evaluation Summary ---")

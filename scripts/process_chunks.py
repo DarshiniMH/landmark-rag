@@ -24,8 +24,8 @@ OUT_PATH  = Path("data/processed/chunks.jsonl")
 MANIFEST  = Path("manifests/landmarks.yaml")
 
 KEEP_RATIO     = 0.70
-CHUNK_SIZE     = 500
-CHUNK_OVERLAP  = 75
+CHUNK_SIZE     = 700
+CHUNK_OVERLAP  = 110
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size    = CHUNK_SIZE,

@@ -1,6 +1,7 @@
 import openai
 import chromadb, torch
 from functools import lru_cache
+from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer, CrossEncoder
 import numpy as np
 
@@ -77,7 +78,7 @@ def rerank(query, docs, ids, top_k):
     
     return [docs[i] for i in sorted_indices], [ids[i] for i in sorted_indices]
 
-def retrieve_context(query: str, embedder, collection, n_results: int) -> list[dict]:
+def retrieve_context(query: str, embedder, collection, k: int) -> list[dict]:
     """
     Embeds the query and retrieves the top-k most relevant document chunks from ChromaDB.
     """
@@ -86,15 +87,33 @@ def retrieve_context(query: str, embedder, collection, n_results: int) -> list[d
 
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=25,
-        include=["documents", "metadatas", "ids"] # We need both text and metadata
+        n_results=200,
+        include=["documents", "metadatas", "distances"] # We need both text and metadata
     )
     
     docs = results["documents"][0]
     ids = results["ids"][0]
     metas = results["metadatas"][0]
+    dist = np.array(results["distances"][0])
+
+    dense_sim = 1.0 - dist  # Convert distances to similarity scores
+    dense   = (dense_sim - dense_sim.min()) / (dense_sim.ptp() + 1e-9)
+
+    # lexical component using BM25
+    tokens = [doc.split() for doc in docs]
+    bm25 = BM25Okapi(tokens)
+    bm_raw = bm25.get_scores(query.split())
+    bm_norm = (bm_raw - bm_raw.min()) / (bm_raw.ptp()+ 1e-9)
+
+    # Combine BM25 scores with Chroma results
+    alpha = 0.8 
+    hybrid = alpha * np.array(dense)+(1-alpha) * bm_norm
+    top_idx = np.argsort(hybrid)[::-1][:40]
+
+    docs = [docs[i] for i in top_idx]
+    ids = [ids[i] for i in top_idx]
     # The result from Chroma is a list of lists, we only need the first one
-    top_docs, top_ids = rerank(query, docs, ids, n_results)
+    top_docs, top_ids = rerank(query, docs, ids, k)
 
     out = []
     for cid in top_ids:
