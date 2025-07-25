@@ -1,9 +1,11 @@
 import openai
 import chromadb, torch
 from functools import lru_cache
+import numpy as np
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer, CrossEncoder
-import numpy as np
+import tiktoken
+from typing import List, Dict, Any
 
 DB_PATH = "vector_db"
 COLL_NAME = "landmarks"
@@ -51,7 +53,7 @@ Thematic Keywords:"""
         response = llm_client.chat.completions.create(
             model="gpt-3.5-turbo", # Using a fast model is good for this step
             messages=[{"role": "user", "content": expansion_prompt}],
-            temperature=0.3,
+            temperature=0.2
         )
         expanded_terms = response.choices[0].message.content.strip()
         # Combine the original query with the new keywords for a richer search
@@ -78,7 +80,56 @@ def rerank(query, docs, ids, top_k):
     
     return [docs[i] for i in sorted_indices], [ids[i] for i in sorted_indices]
 
-def retrieve_context(query: str, embedder, collection, k: int) -> list[dict]:
+
+def _keyword_filter(order: List[int], metas: List[Dict[str, Any]], query_lc: str) -> List[int]:
+    """
+    Filter a pre‑sorted list of candidate indices to those whose
+    `landmark_id` appears (strictly or loosely) in the user’s query.
+    """
+    strict = [
+        i for i in order
+        if metas[i]["landmark_id"].replace("_", " ") in query_lc
+    ]
+    if strict:
+        return strict
+
+    # 2) fallback: token overlap
+    q_tokens = set(query_lc.split())
+    loose = [
+        i for i in order
+        if any(tok in q_tokens for tok in metas[i]["landmark_id"].split("_"))
+    ]
+    return loose or order
+
+def alpha_for_query(query: str, dense: np.ndarray) -> float:
+    q = query.lower().split()
+    short_q = len(q) <= 4
+    has_digit = any(ch.isdigit() for ch in query)
+
+    # 1) very confident dense?  keep α high
+    dense_gap = dense[0] - dense[1]           # already normalised 0‑1
+    if dense_gap < 0.2:
+        return 0.85
+
+    # 2) short OR has digits → trust BM25 more
+    if short_q or has_digit:
+        return 0.75
+
+    return 0.95   
+
+def reformulate(q: str, n :int=2)->list[str]:
+    prompt = ("Rewqite the following landmark question into "
+              "a different phrasing that preserves the meaning.\n"
+              f"Q: {q}\n---\nOne rewrite:")
+    resp = llm.chat.completions.create(
+        model = "gpt-3.5-turbo",
+        temperature = 0.7,
+        messages = [{"role":"user", "content":prompt}],
+        n=n
+    ) 
+    return [c.message.content.strip() for c in resp.choices]     
+
+def retrieve_context(query: str, embedder, collection, k: int, true_relevant_ids, qid) -> list[dict]:
     """
     Embeds the query and retrieves the top-k most relevant document chunks from ChromaDB.
     """
@@ -106,27 +157,55 @@ def retrieve_context(query: str, embedder, collection, k: int) -> list[dict]:
     bm_norm = (bm_raw - bm_raw.min()) / (bm_raw.ptp()+ 1e-9)
 
     # Combine BM25 scores with Chroma results
-    alpha = 0.8 
+    alpha = 0.95
     hybrid = alpha * np.array(dense)+(1-alpha) * bm_norm
-    top_idx = np.argsort(hybrid)[::-1][:40]
 
-    docs = [docs[i] for i in top_idx]
-    ids = [ids[i] for i in top_idx]
-    # The result from Chroma is a list of lists, we only need the first one
+    # Dynamically decide of the pool of candidates based on query tokens
+    n_tokens = len(query.split())
+    POOL = 100 if n_tokens>12 else 40
+    
+    order = sorted(
+        range(len(hybrid)),
+        key=lambda i: (-hybrid[i], ids[i])   # secondary tie-break
+    )[:40]      
+    
+    #------ Debugging ---                           
+    
+    dbg = []
+
+    hits_100 = len(set(ids[i] for i in order) & true_relevant_ids)
+    hits_40  = len(set(ids[i] for i in order[:40]) & true_relevant_ids)
+    dbg.append((qid, hits_40, hits_100))
+
+    print(dbg)
+
+    #------ Debugging end ----
+
+    # ------- Keep only the chunks where landmark appears in the i -------
+    keep = _keyword_filter(order, metas, query.lower())
+    
+    if keep:
+        docs = [docs[i] for i in keep]
+        ids  = [ids[i] for i in keep]
+        metas = [metas[i] for i in keep]
+
+    # ---- Cross-encoder rerank to final k --------------------------
     top_docs, top_ids = rerank(query, docs, ids, k)
 
+    return top_docs, top_ids, metas, ids
+
+def format_retrieved_chunks(top_docs: List[str],
+                            top_ids: List[str],
+                            metas: List[dict],
+                            all_ids: List[str]) -> List[dict]:
     out = []
-    for cid in top_ids:
-        i = ids.index(cid)
+    for j, cid in enumerate(top_ids):
         out.append({
-            "text": docs[i],
-            "meta": metas[i]  # Include metadata for context
+            "text": top_docs[j],
+            "meta": metas[all_ids.index(cid)]     # same position, still safe
         })
-    # Using zip is a clean way to combine the parallel lists from Chroma
-    #for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-     #   retrieved_chunks.append({"text": doc, "meta": meta})
-        
     return out
+   
 
 def build_prompt(query: str, context_chunks: list[dict]) -> str:
     """
@@ -161,6 +240,12 @@ Assistant:"""
 
 def get_llm_answer(prompt: str, llm_client: openai.OpenAI, llm_model: str) -> str:
     """Sends the complete prompt to the LLM and returns the response."""
+    enc = tiktoken.encoding_for_model(llm_model)
+    tok = enc.encode(prompt)
+    print("prompt tokens =", len(tok))
+
+    if len(tok) > 12000:
+        print("Prompt > 12k tokens, consider lowering k or chunk size")
     try:
         response = llm_client.chat.completions.create(
             model=llm_model,

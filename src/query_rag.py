@@ -1,6 +1,6 @@
 import os, sys, torch, chromadb, openai
 from sentence_transformers import SentenceTransformer
-
+from utils.rag_utils import get_llm_answer
 #--Configuration--
 
 DB_PATH = "vector_db"
@@ -121,15 +121,8 @@ Cite the sources using [source #] in your answers
 
     print(" Step 4: Generating the answer using the LLM...")
 
-    try:
-        response = llm.chat.completions.create(
-            model = LLM_MODEL,
-            messages = [{"role": "user", "content": prompt}],                
-            temperature = 0.2,
-        )
-        return response.choices[0].message.content
-    except openai.OpenAIError as e:
-        return f"An error occurred with the OpenAI API: {e}"
+    return get_llm_answer(prompt, llm, LLM_MODEL)
+
 
 #--Main Loop --
 if __name__ == "__main__":
