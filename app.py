@@ -12,7 +12,8 @@ torch.use_deterministic_algorithms(True)
 #---------------------------------------------------------------
 import sys, os, torch, chromadb, openai, streamlit as st
 from pathlib import Path
-from sentence_transformers import SentenceTransformer   
+from sentence_transformers import SentenceTransformer 
+import time  
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
 
 # ── local helpers ─────────────────────────────────────────────
@@ -20,6 +21,11 @@ from utils.rag_utils import (
     retrieve_context, build_prompt, get_llm_answer, expand_query
 )
 from src.agent.active_retriever import agent            # NEW – ReAct loop
+
+def _format_chunks(docs, ids, metas) -> list[dict]:
+    """Return list[{text, meta}] aligned across the three lists."""
+    return [{"text": d, "meta": m, "id": cid}
+            for d, cid, m in zip(docs, ids, metas)]
 
 # ── Streamlit basics ─────────────────────────────────────────
 st.set_page_config(page_title="Interactive Landmark Explorer",
@@ -48,6 +54,14 @@ embedder, collection, llm = load_model_and_db()
 with st.sidebar:
     st.header("Settings")
 
+    retrieval_mode = st.radio(
+        "Retriever configuration",
+        ("⚡ Fast (single query, pool=40)",
+         "🔍 Accurate s(RRF + 2 rewrites, pool=80)"),
+        index=0,
+        help="Fast = lower latency.\nAccurate = higher recall."
+    )
+
     use_agent   = st.toggle("Use Agentic Reasoning (multi-step)", value=False,
                             help="Let the LLM iterate search-→-observe before answering.")
     use_expand  = st.toggle("Query Expansion", value=True)
@@ -57,8 +71,11 @@ with st.sidebar:
     llm_model_selection = st.selectbox(
         "Language Model",
         ("gpt-3.5-turbo", "gpt-4", "gpt-4o", "gpt-4o-mini"),
-        index=0
+        index=3
     )
+
+POOL = 40 if retrieval_mode.startswith("⚡") else 80
+N_REWRITES = 2 if retrieval_mode.startswith("🔍") else 0
 
 # ── main input ───────────────────────────────────────────────
 query = st.text_input("Ask a landmark question:",
@@ -70,7 +87,7 @@ if not query:
 # ── agentic path ─────────────────────────────────────────────
 if use_agent:
     with st.spinner("Reasoning step-by-step …"):
-        answer, scratch = agent(query, chat_history=[], return_scratch = True)
+        answer, scratch = agent(query, POOL, N_REWRITES, chat_history=[], return_scratch = True)
 
     st.subheader("AI Answer (agentic)")
     st.markdown(answer)
@@ -97,8 +114,22 @@ else:
 
     # 2) retrieve context
     with st.spinner("Retrieving context …"):
-        top_docs, top_ids, metas, ids = retrieve_context(expanded_q, embedder, collection, top_k)
-        ctx = format_retrieved_chunks(top_docs, top_ids, metas, ids)
+        start = time.time()
+
+        top_docs, top_ids, metas, ids = retrieve_context(expanded_q, embedder, collection, top_k,
+         POOL, N_REWRITES)
+
+        elapsed = (time.time() - start) * 1000      # ‑‑ ms
+
+    #    show latency + pool size just below the spinner result
+    st.caption(
+        f"⏱️ {elapsed:,.0f} ms  •  "
+        f"pool = {len(ids)}  •  "
+        f"rewrites = {'3' if retrieval_mode.startswith('🔍') else '1'}"
+    )
+        
+
+    ctx = _format_chunks(top_docs, top_ids, metas)
     # 3) build prompt & ask LLM
     prompt = build_prompt(expanded_q, ctx)
     with st.spinner("Generating answer …"):

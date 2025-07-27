@@ -1,5 +1,6 @@
 import openai
 import chromadb, torch
+from collections import defaultdict
 from functools import lru_cache
 import numpy as np
 from rank_bm25 import BM25Okapi
@@ -10,6 +11,10 @@ from typing import List, Dict, Any
 DB_PATH = "vector_db"
 COLL_NAME = "landmarks"
 MODEL = "BAAI/bge-base-en-v1.5"
+LLM = openai.OpenAI()
+RRF_K = 80
+LAMBDA = 60
+
 
 @lru_cache
 def get_reranker():
@@ -117,77 +122,101 @@ def alpha_for_query(query: str, dense: np.ndarray) -> float:
 
     return 0.95   
 
-def reformulate(q: str, n :int=2)->list[str]:
+def reformulate_query(q: str, n :int=2)->list[str]:
     prompt = ("Rewqite the following landmark question into "
               "a different phrasing that preserves the meaning.\n"
               f"Q: {q}\n---\nOne rewrite:")
-    resp = llm.chat.completions.create(
+    resp = LLM.chat.completions.create(
         model = "gpt-3.5-turbo",
         temperature = 0.7,
         messages = [{"role":"user", "content":prompt}],
         n=n
     ) 
-    return [c.message.content.strip() for c in resp.choices]     
+    return [c.message.content.strip() for c in resp.choices]   
 
-def retrieve_context(query: str, embedder, collection, k: int, true_relevant_ids, qid) -> list[dict]:
+
+def _rrf_merge(lists: list[list[str]]) -> list[str]:
+    """
+    lists – list of ranked ID lists (one per query rewrite)
+    returns global list of IDs ranked by Reciprocal‑Rank Fusion
+    """
+    score = defaultdict(float)
+    for ranked in lists:
+        for r, cid in enumerate(ranked, start = 1):        # 1‑based rank
+            score[cid] += 1.0 / (LAMBDA + r)
+    return [cid for cid,_ in sorted(score.items(),
+                                    key=lambda x: (-x[1],x[0]))]  
+
+
+def retrieve_context(query: str, embedder, collection, k: int, pool: int =40, n_rewrites: int = 0) -> list[dict]:
     """
     Embeds the query and retrieves the top-k most relevant document chunks from ChromaDB.
     """
-    # The BGE model does not use a "query: " prefix.
-    query_embedding = embedder.encode(query, normalize_embeddings=True).tolist()
+   # ── 1) Build 1 + N rewrites ──────────────────────────────────
+    if n_rewrites>=1:
+        queries = [query] + reformulate_query(query, n_rewrites)
+    else:
+        queries = [query]
 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=200,
-        include=["documents", "metadatas", "distances"] # We need both text and metadata
-    )
+   # ── 2) retrieve 200 chunks *per* rewrite ─────────────────────────
+    per_query_ids, per_query_docs, per_query_meta, per_query_dist = [], [], [], []
+
+    for q in queries:
+        emb = embedder.encode(q, normalize_embeddings=True).tolist()
+        res = collection.query(
+            query_embeddings=[emb],
+            n_results=200,
+            include=["documents","metadatas","distances"]
+        )
+        per_query_ids  .append(res["ids"][0])
+        per_query_docs .append(res["documents"][0])
+        per_query_meta .append(res["metadatas"][0])
+        per_query_dist .append(res["distances"][0])
+
     
-    docs = results["documents"][0]
-    ids = results["ids"][0]
-    metas = results["metadatas"][0]
-    dist = np.array(results["distances"][0])
+    # ---------- 3) fuse ID lists (RRF) ---------------------------------
+    fused_ids = _rrf_merge(per_query_ids)[:pool]
 
-    dense_sim = 1.0 - dist  # Convert distances to similarity scores
-    dense   = (dense_sim - dense_sim.min()) / (dense_sim.ptp() + 1e-9)
+    # build a fast lookup:  id  → (doc, meta, dist)
+    lookup = {}
+    for ids_, docs_, meta_, dist_ in zip(per_query_ids,
+                                         per_query_docs,
+                                         per_query_meta,
+                                         per_query_dist):
+        for cid, doc, meta, d in zip(ids_, docs_, meta_, dist_):
+            if cid not in lookup:          # first occurrence wins
+                lookup[cid] = (doc, meta, d)
 
-    # lexical component using BM25
-    tokens = [doc.split() for doc in docs]
-    bm25 = BM25Okapi(tokens)
-    bm_raw = bm25.get_scores(query.split())
-    bm_norm = (bm_raw - bm_raw.min()) / (bm_raw.ptp()+ 1e-9)
+    docs   = [lookup[cid][0] for cid in fused_ids]
+    metas  = [lookup[cid][1] for cid in fused_ids]
+    dist   = [lookup[cid][2] for cid in fused_ids]
+    ids    = fused_ids        
 
-    # Combine BM25 scores with Chroma results
-    alpha = 0.95
-    hybrid = alpha * np.array(dense)+(1-alpha) * bm_norm
+    # ── 4) Hybrid scoring ───────────────────────────────────────
+    dense_sim = 1.0 - np.array(dist)
+    dense     = (dense_sim - dense_sim.min()) / (dense_sim.ptp() + 1e-9)
+    tokens    = [d.split() for d in docs]
+    bm25      = BM25Okapi(tokens)
+    bm_raw    = bm25.get_scores(query.split())
+    bm_norm   = (bm_raw - bm_raw.min()) / (bm_raw.ptp()+1e-9)
 
-    # Dynamically decide of the pool of candidates based on query tokens
-    n_tokens = len(query.split())
-    POOL = 100 if n_tokens>12 else 40
-    
+    alpha      = 0.95
+    hybrid = alpha * dense + (1-alpha) * bm_norm
+
+    # deterministic secondary sort on chunk‑ID
     order = sorted(
         range(len(hybrid)),
-        key=lambda i: (-hybrid[i], ids[i])   # secondary tie-break
-    )[:40]      
-    
-    #------ Debugging ---                           
-    
-    dbg = []
+        key=lambda i: (-hybrid[i], ids[i])
+    )
 
-    hits_100 = len(set(ids[i] for i in order) & true_relevant_ids)
-    hits_40  = len(set(ids[i] for i in order[:40]) & true_relevant_ids)
-    dbg.append((qid, hits_40, hits_100))
-
-    print(dbg)
-
-    #------ Debugging end ----
-
-    # ------- Keep only the chunks where landmark appears in the i -------
+    # ── 5) Landmark‑keyword filter ─────────────────────────────
     keep = _keyword_filter(order, metas, query.lower())
-    
     if keep:
-        docs = [docs[i] for i in keep]
-        ids  = [ids[i] for i in keep]
-        metas = [metas[i] for i in keep]
+        order = keep
+
+    docs  = [docs[i]  for i in order]
+    ids   = [ids[i]   for i in order]
+    metas = [metas[i] for i in order]
 
     # ---- Cross-encoder rerank to final k --------------------------
     top_docs, top_ids = rerank(query, docs, ids, k)

@@ -10,6 +10,8 @@ DEBUG = bool(os.getenv("AGENT_DEBUG"))  # set env var to print debug
 
 def agent(
     question: str, 
+    pool: int,
+    n_rewrites: int,
     chat_history: List[Dict],
     return_scratch: bool = False
 ) -> Tuple[str, List[Dict]] | str:
@@ -53,7 +55,7 @@ def agent(
             q2 = args.get("query", "")
             k2   =int(args.get("k", 7))
             
-            chunks = search_docs(q2, k2)
+            chunks = search_docs(q2, pool, n_rewrites, k2)
 
             obs_text = "\n\n".join(c["text"] for c in chunks[:k2])[:1500]
 

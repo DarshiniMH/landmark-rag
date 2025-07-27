@@ -29,8 +29,8 @@ K = 7
 CHUNK = 700
 OVERLAP = 110
 ALPHA = 0.95
-RUN_NOTE = "revert to simpler retriever setting"
-RERANK = 40
+RUN_NOTE = "reformulating query"
+RERANK = 80
 
 
 
@@ -59,7 +59,7 @@ def eval_retriever(k_val: int) -> dict:
         q_text = expand_query(q_text)
         
         # The result from Chroma is a list of lists, we only need the first one
-        top_docs, top_ids, metas, ids = retrieve_context(q_text, embedder, collection, k_val, true_relevant_ids,q_id)
+        top_docs, top_ids, metas, ids = retrieve_context(q_text, embedder, collection, k_val)
 
         true_positives = len(set(top_ids) & true_relevant_ids)
 
