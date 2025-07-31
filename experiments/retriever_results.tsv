@@ -24,6 +24,6 @@ chunk	overlap	alpha	k	rerank  ctx_P	ctx_R	id_P	id_R	note	    timestamp
 700	    110	    dynamic	7	40	    0.415	0.315	0.479	0.315	+baseline	2025-07-24T07:43
 700	    110	    dynamic	7	dynamic	0.404	0.323	0.471	0.323	dynamic pool size and double time reranking	2025-07-24T19:16
 700	    110	    0.95	7	40	    0.424	0.336	0.504	0.336	revert to simpler retriever setting	2025-07-24T19:41
-700	110	0.95	7	40	0.421	0.331	0.487	0.331	reformulating query	2025-07-25T02:03
-700	110	0.95	7	40	0.436	0.336	0.504	0.336	reformulating query	2025-07-25T02:14
-700	110	0.95	7	80	0.415	0.345	0.496	0.345	reformulating query	2025-07-26T00:08
+700	    110	    0.95	7	40	    0.421	0.331	0.487	0.331	reformulating query	2025-07-25T02:03
+700	    110	    0.95	7	40	    0.436	0.336	0.504	0.336	reformulating query	2025-07-25T02:14
+700	    110	    0.95	7	80	    0.415	0.345	0.496	0.345	reformulating query/RRF	2025-07-26T00:08

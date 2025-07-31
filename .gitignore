@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 .venv/
-
+.env/
 # Data & embeddings
 data/
 vector_db/
@@ -22,3 +22,6 @@ precision_recall_results
 
 # eval_retriever first version
 scripts/eval_retriever.py
+
+# generation eval
+generated_results/

@@ -1,0 +1,12 @@
+You are a strict fact‑checker.
+
+Question: {question}
+Claim to verify: {claim}
+
+Evidence (retrieved context):
+{context}
+
+Respond exactly YES or NO:
+
+• YES  – the evidence states **the same fact with the same entities**  
+• NO   – if the evidence is absent, conflicting, or about another entity

@@ -1,4 +1,6 @@
 # app.py  ― Interactive Landmark Explorer
+from dotenv import load_dotenv
+load_dotenv()  
 # ----- deterministic seeds -----------------------------------
 import os, random, numpy as np
 SEED = 42

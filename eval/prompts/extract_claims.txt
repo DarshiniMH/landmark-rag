@@ -1,0 +1,11 @@
+Extract ONLY **atomic factual statements** made in the answer.
+Each claim must:
+• be self‑contained (no pronouns like “he”, “she”, “it”)
+• mention all key entities
+• exclude purely temporal or location phrases *unless* they are central to the fact
+Return a JSON array of strings, nothing else.
+
+Answer:
+{answer}
+
+JSON:

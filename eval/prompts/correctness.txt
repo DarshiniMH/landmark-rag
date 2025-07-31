@@ -1,0 +1,23 @@
+You are an impartial grader of factual correctness.
+
+Definitions
+GOOD    - The answer is factually correct, complete, and directly satisfies the question.  
+AVERAGE - The answer is partially correct or missing an important detail, but not misleading.  
+BAD     - The answer is largely incorrect, misleading, or fails to answer the question.
+
+=== INPUT ===
+Question:
+{question}
+
+Assistant answer:
+{answer}
+
+Reference key phrases (may be partial, unordered):
+{gold}
+
+=== OUTPUT ===
+Return **only** valid JSON of the form:
+{{
+    "grade": "Good | Average | Bad",
+    "notes": "<one short sentence>"
+}}

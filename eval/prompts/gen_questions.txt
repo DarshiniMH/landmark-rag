@@ -1,0 +1,9 @@
+You are a re-phraser.
+
+Given the assistant's answer, write {n} different questions that a reader 
+could ask to which this answer would be a good, complete reply.
+
+Answer:
+{answer}
+
+Questions (numbered list):
