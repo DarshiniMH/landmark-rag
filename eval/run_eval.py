@@ -32,9 +32,9 @@ COLLECTION = get_collections()
 LLM = openai.OpenAI()
 
 TOP_K = 7
-POOL = 40
-N_REWRITES = 0
-LLM_MODEL = "gpt-4o"
+POOL = 80
+N_REWRITES = 2
+LLM_MODEL = "gpt-4o-mini"  
 
 #------------------- Load Eval Questions -------------------
 with open(QUEST_YAML, "r") as f:
@@ -79,7 +79,7 @@ for q in QUESTIONS:
           f"rel={rel_str}, ")
 
 ts = datetime.datetime.utcnow().isoformat(timespec="seconds")
-out_path = RESULTS_DIR / f"{ts}_80Pool-2n-rewrites-answers.jsonl"
+out_path = RESULTS_DIR / f"{ts}_{LLM_MODEL}_{N_REWRITES}rewrites_{POOL}pool_gemini_eval.jsonl"
 with out_path.open("w", encoding="utf-8") as f:
     for r in rows:
         f.write(json.dumps(r, ensure_ascii=False) + "\n")

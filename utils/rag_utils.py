@@ -22,7 +22,8 @@ def get_reranker():
 
 @lru_cache
 def get_embedder():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    #device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"  
     model = SentenceTransformer(MODEL, device = device)
     model.max_seq_length = 512
     return model
@@ -123,7 +124,7 @@ def alpha_for_query(query: str, dense: np.ndarray) -> float:
     return 0.95   
 
 def reformulate_query(q: str, n :int=2)->list[str]:
-    prompt = ("Rewqite the following landmark question into "
+    prompt = ("Rewrite the following landmark question into "
               "a different phrasing that preserves the meaning.\n"
               f"Q: {q}\n---\nOne rewrite:")
     resp = LLM.chat.completions.create(
@@ -254,18 +255,51 @@ def build_prompt(query: str, context_chunks: list[dict]) -> str:
     # The robust prompt template
     prompt = f"""You are an expert Landmark assistant.
 
-Use *only* the sources below to answer the user's question.
-
-If you don't know the answer, say "I don't know".
-
-Cite the sources using [source #] in your answers.
+**Grounding rules**
+1. Use *only* information found in the **Sources** below.
+2. Every factual sentence must end with a citation [source #].
+3. If the answer is not explicitly present in Sources, reply exactly: "I don't know."
 
 Sources:
 {context_for_prompt}
 
-User Query: {query}
+User query:
+{query}
+
 Assistant:"""
     return prompt
+
+def build_prompt_conversational(query: str, 
+                                chunks: list[dict],     
+                                summary: str, 
+                                turns: str) -> str:
+    src_lines = []
+    for i, ch in enumerate(chunks, 1):
+        src_lines.append(f"[source {i}] {ch['text']}")
+    sources_block ="\n".join(src_lines)
+
+    promt =f"""You are an expert Landmark assistant.
+
+**Conversation summary**
+{summary or '*None so far*'}
+
+**Recent turns**
+{turns or '*No recent turns*'}
+
+**Grounding rules**
+1. Use *only* information found in the **Sources** section.
+2. *Every factual sentence* must end with a citation like [source #].
+3. If the answer is not explicitly present in Sources, reply exactly: "I don't know."
+
+Sources:
+{sources_block}
+
+User query:
+{query}
+
+Assistant:"""
+    return promt
+
 
 def get_llm_answer(prompt: str, llm_client: openai.OpenAI, llm_model: str) -> str:
     """Sends the complete prompt to the LLM and returns the response."""

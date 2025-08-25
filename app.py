@@ -1,154 +1,222 @@
-# app.py  ― Interactive Landmark Explorer
-from dotenv import load_dotenv
-load_dotenv()  
-# ----- deterministic seeds -----------------------------------
-import os, random, numpy as np
-SEED = 42
-random.seed(SEED); np.random.seed(SEED)
-os.environ["PYTHONHASHSEED"] = str(SEED)
+# app.py  ― Interactive Landmark Explorer (chat version)
+from __future__ import annotations
+from dotenv import load_dotenv; load_dotenv()
 
-import torch
-torch.manual_seed(SEED)
-torch.use_deterministic_algorithms(True)
+# -------------- deterministic seeds -----------------------------------------
+import os, random, numpy as np, torch
 
-#---------------------------------------------------------------
-import sys, os, torch, chromadb, openai, streamlit as st
+from utils.seed import get_run_seed
+SEED = get_run_seed()
+random.seed(SEED); np.random.seed(SEED); os.environ["PYTHONHASHSEED"] = str(SEED)
+torch.manual_seed(SEED); torch.use_deterministic_algorithms(True)
+
+# -------------- std libs & deps ---------------------------------------------
+import sys, time, chromadb, openai, streamlit as st, re
 from pathlib import Path
-from sentence_transformers import SentenceTransformer 
-import time  
+from sentence_transformers import SentenceTransformer
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
 
-# ── local helpers ─────────────────────────────────────────────
+# -------------- local helpers ------------------------------------------------
 from utils.rag_utils import (
-    retrieve_context, build_prompt, get_llm_answer, expand_query
+    retrieve_context, build_prompt_conversational,
+    get_llm_answer, expand_query, get_embedder, get_collections
 )
-from src.agent.active_retriever import agent            # NEW – ReAct loop
+from src.agent.active_retriever import agent
+from utils.memory import MemoryManager
 
-def _format_chunks(docs, ids, metas) -> list[dict]:
-    """Return list[{text, meta}] aligned across the three lists."""
-    return [{"text": d, "meta": m, "id": cid}
-            for d, cid, m in zip(docs, ids, metas)]
+# ---- web fallback helpers (non‑Wikipedia) -----------------------------------
+from utils.web_search import get_web_chunks, rank_chunks_by_embed
+from utils.web_ingest import make_splitter
 
-# ── Streamlit basics ─────────────────────────────────────────
+# -------------- initialise session‑state objects ----------------------------
+if "chat_history" not in st.session_state:          # each item: {role, content, ctx?}
+    st.session_state.chat_history = []
+
+mem = MemoryManager(st.session_state)               # rolling summary + buffer
+
+# -------------- Streamlit basics --------------------------------------------
 st.set_page_config(page_title="Interactive Landmark Explorer",
                    page_icon="🗺️", layout="centered")
 st.title("Interactive Landmark Explorer")
-st.write("Ask questions about famous landmarks and get detailed answers.")
 
-# ── lazy-load models & DB │ cached across runs ───────────────
+# -------------- lazy‑load embedder + DB + OpenAI -----------------------------
 @st.cache_resource(show_spinner=False)
 def load_model_and_db():
     if not os.getenv("OPENAI_API_KEY"):
         st.error("Please set the OPENAI_API_KEY environment variable."); st.stop()
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    embedder = SentenceTransformer("BAAI/bge-base-en-v1.5", device=device)
-    embedder.max_seq_length = 512
-
-    client = chromadb.PersistentClient(path="vector_db")
-    collection = client.get_collection("landmarks")
+    embedder = get_embedder()
+    collection = get_collections()
 
     return embedder, collection, openai.OpenAI()
 
 embedder, collection, llm = load_model_and_db()
 
-# ── sidebar settings ─────────────────────────────────────────
+# -------------- sidebar ------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
 
-    retrieval_mode = st.radio(
-        "Retriever configuration",
-        ("⚡ Fast (single query, pool=40)",
-         "🔍 Accurate s(RRF + 2 rewrites, pool=80)"),
-        index=0,
-        help="Fast = lower latency.\nAccurate = higher recall."
-    )
+    use_agent  = st.toggle("Use Agentic Reasoning (multi‑step)", value=False)
+    use_expand = st.toggle("Query Expansion", value=True)
+    top_k      = st.slider("Top‑k Chunks", 3, 15, 7, 1)
 
-    use_agent   = st.toggle("Use Agentic Reasoning (multi-step)", value=False,
-                            help="Let the LLM iterate search-→-observe before answering.")
-    use_expand  = st.toggle("Query Expansion", value=True)
-    top_k       = st.slider("Top-k Chunks (single-shot mode)",
-                             min_value=3, max_value=15, value=7, step=1)
+    st.markdown("---")
+    allow_web  = st.toggle("🌐 Allow web fallback (non‑Wikipedia)", value=True,
+                           help="If answer is 'I don't know' or context is weak, fetch a few non‑Wikipedia pages and retry.")
+    max_web_urls = st.slider("Max web URLs", 1, 8, 5, 1)
 
+    st.markdown("---")
     llm_model_selection = st.selectbox(
-        "Language Model",
+        "Answer model",
         ("gpt-3.5-turbo", "gpt-4", "gpt-4o", "gpt-4o-mini"),
         index=3
     )
 
-POOL = 40 if retrieval_mode.startswith("⚡") else 80
-N_REWRITES = 2 if retrieval_mode.startswith("🔍") else 0
+POOL       = 40    # initial candidate pool inside retrieve_context
+N_REWRITES = 0     # single-shot by default (you can wire your toggle later)
 
-# ── main input ───────────────────────────────────────────────
-query = st.text_input("Ask a landmark question:",
-                      placeholder="e.g. Which emperor commissioned the Colosseum?")
+# -------------- helpers ------------------------------------------------------
+def _format_chunks(docs, ids, metas):
+    """docs/ids/metas -> list of {text, meta, id} aligned by index."""
+    return [{"text": d, "meta": m, "id": cid}
+            for d, cid, m in zip(docs, ids, metas)]
 
-if not query:
+IDK_RE = re.compile(r"\b(i\s*don['’]t\s*know|no\s+information|not\s+sure)\b", re.I)
+def is_idk(ans: str) -> bool:
+    return bool(IDK_RE.search(ans or ""))
+
+# -------------- render previous chat ----------------------------------------
+for turn in st.session_state.chat_history:
+    with st.chat_message(turn["role"]):
+        st.markdown(turn["content"])
+        if turn.get("ctx"):                            # assistant with sources
+            with st.expander("📑 Sources", expanded=False):
+                for i, ch in enumerate(turn["ctx"], 1):
+                    meta = ch.get("meta", {})
+                    src  = meta.get("source", "")
+                    sec  = meta.get("section", "")
+                    url  = meta.get("origin_url", "")
+                    line = f"**{i}.** *{src or 'db'}* — {sec}\n\n> {ch['text']}"
+                    if url:
+                        line += f"\n\n[{url}]({url})"
+                    st.markdown(line)
+
+# -------------- user input ---------------------------------------------------
+user_msg = st.chat_input("Ask a question about a landmark…")
+if user_msg is None:
     st.stop()
 
-# ── agentic path ─────────────────────────────────────────────
+# display the user's bubble immediately
+with st.chat_message("user"):
+    st.markdown(user_msg)
+
+# -------------- rewrite user query ------------------------------------------
+rew_q = mem.rewrite_question(user_msg)
+
+# ---------- optional agentic path -------------------------------------------
 if use_agent:
-    with st.spinner("Reasoning step-by-step …"):
-        answer, scratch = agent(query, POOL, N_REWRITES, chat_history=[], return_scratch = True)
+    with st.spinner("Reasoning step‑by‑step …"):
+        answer, scratch = agent(rew_q, POOL, N_REWRITES,
+                                chat_history=st.session_state.chat_history,
+                                return_scratch=True)
+    with st.chat_message("assistant"):
+        st.markdown(answer)
+        if scratch:
+            with st.expander("🛠️ Scratch‑pad", expanded=False):
+                st.write(scratch)
 
-    st.subheader("AI Answer (agentic)")
-    st.markdown(answer)
+    st.session_state.chat_history.extend([
+        {"role": "user",      "content": user_msg},
+        {"role": "assistant", "content": answer}
+    ])
+    mem.update(user_msg, answer)
+    st.stop()     # skip single‑shot path below
 
-    with st.expander("Thought / Action / Observation"):
-        if not scratch:
-            st.write("No scratch-pad returned")
-        else:
-            for i, step in enumerate(scratch, 1):
-                st.markdown(f"#### Step {i}")
-                st.markdown(f"**Thought {i}** \n{step['thought'] or '*<empty>*'}")
-                st.markdown(f"**Action {i}** \n{step['action']}")
-                st.markdown(f"**Observtion {i}**")
-                st.code(step["obs"], language="json")
-    # In this minimal version we don’t show intermediate thoughts;
-    # flip the env-flag AGENT_DEBUG=1 if you want terminal prints.
+# ---------- single‑shot RAG path --------------------------------------------
 
-# ── single-shot RAG path ─────────────────────────────────────
-else:
-    # 1) optional query expansion
-    expanded_q = expand_query(query, llm) if use_expand else query
-    if use_expand:
-        st.info(f"Expanded query → **{expanded_q}**")
+exp_q = expand_query(rew_q, llm) if use_expand else rew_q
 
-    # 2) retrieve context
-    with st.spinner("Retrieving context …"):
-        start = time.time()
-
-        top_docs, top_ids, metas, ids = retrieve_context(expanded_q, embedder, collection, top_k,
-         POOL, N_REWRITES)
-
-        elapsed = (time.time() - start) * 1000      # ‑‑ ms
-
-    #    show latency + pool size just below the spinner result
-    st.caption(
-        f"⏱️ {elapsed:,.0f} ms  •  "
-        f"pool = {len(ids)}  •  "
-        f"rewrites = {'3' if retrieval_mode.startswith('🔍') else '1'}"
+with st.spinner("Retrieving context …"):
+    t0 = time.time()
+    docs, ids, metas, pool_ids = retrieve_context(
+        exp_q, embedder, collection, top_k, POOL, N_REWRITES
     )
-        
+    t_retr = (time.time() - t0) * 1000
 
-    ctx = _format_chunks(top_docs, top_ids, metas)
-    # 3) build prompt & ask LLM
-    prompt = build_prompt(expanded_q, ctx)
-    with st.spinner("Generating answer …"):
-        answer = get_llm_answer(prompt, llm, llm_model_selection)
+ctx_chunks = _format_chunks(docs, ids, metas)
 
-    # 4) display
-    st.subheader("AI Answer")
+# 1st pass prompt & answer
+prompt = build_prompt_conversational(
+    query   = exp_q,
+    chunks  = ctx_chunks,
+    summary = mem.summary,
+    turns   = "\n".join(mem.buffer)
+)
+
+with st.spinner("Generating answer …"):
+    answer = get_llm_answer(prompt, llm, llm_model_selection)
+
+# ---------- web fallback (non‑Wikipedia), only if allowed & needed ----------
+# Trigger if model refused or context is very small (you can tune this gate).
+trigger = is_idk(answer) or (len(ctx_chunks) < max(4, top_k // 2))
+
+if allow_web and trigger:
+    #st.info("🌐 Fetching additional web sources…")
+    with st.spinner("Searching the web …"):
+        splitter = make_splitter()
+        # 1) fetch & extract readable text for a few URLs, then split into chunks
+        web_chunks   = get_web_chunks(exp_q, splitter, topn_results=max_web_urls, per_url_chars=3000)
+        print(f" web chunks: {len(web_chunks)}")
+        # 2) rank those chunks by similarity to the query, keep the best few
+        web_ranked   = rank_chunks_by_embed(exp_q, web_chunks, topn=40)
+
+    if web_ranked:
+        #st.info("🌐 Found non‑Wikipedia web sources, retrying with them…")
+        # Fuse local context + a small number of top web chunks
+        # Keep UI+prompt tidy: add up to half of top_k as web chunks (at least 3, at most 8)
+        # extra_web = min(max(3, top_k // 2), 8, len(web_ranked))
+        web_ctx = [
+            {"text": c["text"], "meta": c["meta"], "id": c["id"]} for c in web_ranked[:top_k]
+        ]
+
+        prompt2 = build_prompt_conversational(
+            query   = exp_q,
+            chunks  = web_ctx,
+            summary = mem.summary,
+            turns   = "\n".join(mem.buffer)
+        )
+
+        with st.spinner("Generating answer with web support …"):
+            answer = get_llm_answer(prompt2, llm, llm_model_selection)
+
+        ctx_chunks = web_ctx  # so the Sources panel shows web chunks too
+
+        #st.info("🌐 Included non‑Wikipedia web sources.")
+
+# ---------- update memory AFTER final answer is settled ----------------------
+mem.update(user_msg, answer)
+
+# ---------- assistant bubble -------------------------------------------------
+with st.chat_message("assistant"):
     st.markdown(answer)
+    with st.expander("📑 Sources", expanded=False):
+        for i, ch in enumerate(ctx_chunks, 1):
+            meta = ch.get("meta", {})
+            src  = meta.get("source", "")
+            sec  = meta.get("section", "")
+            url  = meta.get("origin_url", "")
+            line = f"**{i}.** *{src or 'db'}* — {sec}\n\n> {ch['text']}"
+            if url:
+                line += f"\n\n[{url}]({url})"
+            st.markdown(line)
 
-    with st.expander("Context chunks"):
-        if not ctx:
-            st.write("No chunks retrieved.")
-        else:
-            for i, ch in enumerate(ctx, 1):
-                meta = ch["meta"]
-                st.markdown(
-                    f"**[{i}]** • *{meta.get('source','?')}* — {meta.get('section','?')}"
-                )
-                st.markdown("> " + ch["text"])
+# ---------- save to session‑state -------------------------------------------
+st.session_state.chat_history.extend([
+    {"role": "user",      "content": user_msg},
+    {"role": "assistant", "content": answer, "ctx": ctx_chunks}
+])
 
+# ---------- footer latency ---------------------------------------------------
+st.caption(
+    f"⏱️ {t_retr:,.0f} ms • pool={len(pool_ids)} • rewrites={N_REWRITES or 1}"
+)

@@ -7,6 +7,7 @@ RUN_SEED = get_run_seed()
 import json, random, pathlib
 from typing import List
 from openai import OpenAI
+import google.generativeai as genai
 from sentence_transformers import SentenceTransformer,util
 from utils.rag_utils import get_embedder
 import os
@@ -19,17 +20,71 @@ IDK_RE = re.compile(
     r"\b(i\s+don['’]t\s+know|unknown|no\s+information|not\s+sure)\b", re.I
 )
 
+# EVAL_MODEL and EVAL_PROVIDER are set in .env
+EVAL_MODEL = os.getenv("EVAL_MODEL", "gpt-4o-mini")
+EVAL_PROVIDER = os.getenv("EVAL_PROVIDER", "openai").lower()
 #-------------- helper: fill prompt templates ----------------------------------
 
 def _p(name) : return (PROMPTS/name).read_text()
 
-def _ask_llm(prompt, model="gpt-4o-mini", **kw):
+def _ask_openai(prompt, seed: int, model: str | None = None, **kw) -> str:
+    model = model or EVAL_MODEL
     kw.setdefault("temperature", 0)
-    kw.setdefault("seed", RUN_SEED)
+    kw.setdefault("seed", seed)
     msg = [{"role":"user", "content":prompt}]
     return LLM.chat.completions.create(model = model, messages = msg, **kw)\
             .choices[0].message.content.strip()
 
+def _ask_gemini(prompt: str, seed: int, model: str | None = None, 
+                json_mode: bool = False, max_output_tokens: int = 512) -> str:
+    key = os.getenv("GOOGLE_API_KEY")
+    if not key:
+        raise RuntimeError("GOOGLE_API_KEY not set; cannot use Gemini for eval.")
+    genai.configure(api_key=key)
+    model = model or os.getenv("EVAL_MODEL", "gemini-1.5-pro")
+    gen_cfg = {
+        "temperature": 0,
+        "top_p": 0,
+        "top_k": 1,
+        "candidate_count": 1,
+        "max_output_tokens": max_output_tokens,
+    }
+    # Gemini supports seed in 1.5; if client version lacks it, ignore quietly
+    """try:
+        gen_cfg["seed"] = seed
+    except Exception:
+        pass"""
+
+    if json_mode:
+        # Ask for JSON back; this greatly reduces parse issues
+        gen_cfg["response_mime_type"] = "application/json"
+
+    m = genai.GenerativeModel(model_name=model)
+    # single-turn generation; we already craft full prompts
+    resp = m.generate_content(prompt, generation_config=gen_cfg)
+    # Handle finish reasons / empty outputs defensively
+    text = getattr(resp, "text", "") or ""
+    if not text:
+        try:
+            parts = []
+            for c in (resp.candidates or []):
+                for p in getattr(c.content, "parts", []) or []:
+                    parts.append(getattr(p, "text", "") or "")
+            text = "\n".join([t for t in parts if t]).strip()
+        except Exception:
+            text = ""
+    return text.strip()
+
+def _ask_llm(prompt: str, model: str | None = None, json_mode: bool = False, **kw) -> str:
+    """
+    Unified entrypoint for evaluator calls. Chooses Gemini or OpenAI based on env.
+    """
+    if EVAL_PROVIDER == "gemini":
+        print(f"Using Gemini model: {model or EVAL_MODEL}")
+        return _ask_gemini(prompt, RUN_SEED, model or EVAL_MODEL, json_mode=json_mode)
+    # default: OpenAI
+    print(f"Using OpenAI model: {model or EVAL_MODEL}")
+    return _ask_openai(prompt, RUN_SEED, model or EVAL_MODEL, **kw)
 #-------------------------------------------------------------------------------
 EMBEDDER = get_embedder()
 
@@ -37,7 +92,7 @@ EMBEDDER = get_embedder()
 
 def extract_claims(answer:str) -> List[str]:
     prompt = _p("extract_claims.txt").format(answer=answer)
-    txt = _ask_llm(prompt)
+    txt = _ask_llm(prompt, json_mode=True)
     try:
         return json.loads(txt)
     except json.JSONDecodeError:
@@ -65,7 +120,7 @@ def _embed(text: str):
 
 def answer_relevance(answer:str, original_q:str, n: int = 3) -> float:
     prompt = _p("gen_questions.txt").format(answer = answer, n= n)
-    qlist = _ask_llm(prompt)
+    qlist = _ask_llm(prompt, json_mode=True)
     gen_qs = [l.lstrip("1234567890.- ").strip()
               for l in qlist.splitlines() if l.strip()]
     gen_qs = gen_qs[:n] if len(gen_qs) >= n else gen_qs
@@ -91,7 +146,7 @@ def judge_correctness_grade(question: str,
         answer = answer,
         gold = ", ".join(gold_phrases)
     )
-    raw = _ask_llm(prompt)
+    raw = _ask_llm(prompt, json_mode=True)
 
     try:
         obj = json.loads(raw)
