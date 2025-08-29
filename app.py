@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
 # -------------- local helpers ------------------------------------------------
 from utils.rag_utils import (
     retrieve_context, build_prompt_conversational,
-    get_llm_answer, expand_query, get_embedder, get_collections
+    get_llm_answer, expand_query, get_embedder, get_collections, get_gemini
 )
 from src.agent.active_retriever import agent
 from utils.memory import MemoryManager
@@ -58,6 +58,8 @@ with st.sidebar:
 
     use_agent  = st.toggle("Use Agentic Reasoning (multi‑step)", value=False)
     use_expand = st.toggle("Query Expansion", value=True)
+    use_rewrite = st.toggle("Query Rewriting", value=False,
+                            help = "Rewrites the user query for better retrival. Increases response time slightly.")
     top_k      = st.slider("Top‑k Chunks", 3, 15, 7, 1)
 
     st.markdown("---")
@@ -118,7 +120,8 @@ if use_agent:
     with st.spinner("Reasoning step‑by‑step …"):
         answer, scratch = agent(rew_q, POOL, N_REWRITES,
                                 chat_history=st.session_state.chat_history,
-                                return_scratch=True)
+                                return_scratch=True,
+                                allow_web=allow_web)
     with st.chat_message("assistant"):
         st.markdown(answer)
         if scratch:
@@ -138,6 +141,8 @@ exp_q = expand_query(rew_q, llm) if use_expand else rew_q
 
 with st.spinner("Retrieving context …"):
     t0 = time.time()
+    if use_rewrite:
+        N_REWRITES = 2
     docs, ids, metas, pool_ids = retrieve_context(
         exp_q, embedder, collection, top_k, POOL, N_REWRITES
     )
@@ -153,7 +158,8 @@ prompt = build_prompt_conversational(
     turns   = "\n".join(mem.buffer)
 )
 
-with st.spinner("Generating answer …"):
+with st.spinner("Generating answer from gpt …"):
+    #answer = get_gemini(prompt)
     answer = get_llm_answer(prompt, llm, llm_model_selection)
 
 # ---------- web fallback (non‑Wikipedia), only if allowed & needed ----------
@@ -186,7 +192,8 @@ if allow_web and trigger:
             turns   = "\n".join(mem.buffer)
         )
 
-        with st.spinner("Generating answer with web support …"):
+        with st.spinner("Generating answer with web support using gpt"):
+            #answer = get_gemini(prompt2)
             answer = get_llm_answer(prompt2, llm, llm_model_selection)
 
         ctx_chunks = web_ctx  # so the Sources panel shows web chunks too

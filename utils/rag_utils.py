@@ -4,9 +4,11 @@ from collections import defaultdict
 from functools import lru_cache
 import numpy as np
 from rank_bm25 import BM25Okapi
+import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 import tiktoken
 from typing import List, Dict, Any
+import os
 
 DB_PATH = "vector_db"
 COLL_NAME = "landmarks"
@@ -149,7 +151,7 @@ def _rrf_merge(lists: list[list[str]]) -> list[str]:
                                     key=lambda x: (-x[1],x[0]))]  
 
 
-def retrieve_context(query: str, embedder, collection, k: int, pool: int =40, n_rewrites: int = 0) -> list[dict]:
+def retrieve_context(query: str, embedder, collection, k: int, pool: int =20, n_rewrites: int = 0) -> list[dict]:
     """
     Embeds the query and retrieves the top-k most relevant document chunks from ChromaDB.
     """
@@ -166,7 +168,7 @@ def retrieve_context(query: str, embedder, collection, k: int, pool: int =40, n_
         emb = embedder.encode(q, normalize_embeddings=True).tolist()
         res = collection.query(
             query_embeddings=[emb],
-            n_results=200,
+            n_results=100,  #revert to 200, 100 for demo to get faster response
             include=["documents","metadatas","distances"]
         )
         per_query_ids  .append(res["ids"][0])
@@ -176,7 +178,7 @@ def retrieve_context(query: str, embedder, collection, k: int, pool: int =40, n_
 
     
     # ---------- 3) fuse ID lists (RRF) ---------------------------------
-    fused_ids = _rrf_merge(per_query_ids)[:pool]
+    fused_ids = _rrf_merge(per_query_ids)[:pool] # change pool to 40. currently 20 for demo to get faster response
 
     # build a fast lookup:  id  → (doc, meta, dist)
     lookup = {}
@@ -318,3 +320,44 @@ def get_llm_answer(prompt: str, llm_client: openai.OpenAI, llm_model: str) -> st
         return response.choices[0].message.content.strip()
     except openai.OpenAIError as e:
         return f"An error occurred with the OpenAI API: {e}"
+
+
+def get_gemini(prompt: str, model: str | None = None, 
+                json_mode: bool = False, max_output_tokens: int = 512) -> str:
+    key = os.getenv("GOOGLE_API_KEY")
+    if not key:
+        raise RuntimeError("GOOGLE_API_KEY not set; cannot use Gemini for eval.")
+    genai.configure(api_key=key)
+    model = model or os.getenv("EVAL_MODEL", "gemini-1.5-pro")
+    gen_cfg = {
+        "temperature": 0,
+        "top_p": 0,
+        "top_k": 1,
+        "candidate_count": 1,
+        "max_output_tokens": max_output_tokens,
+    }
+    # Gemini supports seed in 1.5; if client version lacks it, ignore quietly
+    """try:
+        gen_cfg["seed"] = seed
+    except Exception:
+        pass"""
+
+    if json_mode:
+        # Ask for JSON back; this greatly reduces parse issues
+        gen_cfg["response_mime_type"] = "application/json"
+
+    m = genai.GenerativeModel(model_name=model)
+    # single-turn generation; we already craft full prompts
+    resp = m.generate_content(prompt, generation_config=gen_cfg)
+    # Handle finish reasons / empty outputs defensively
+    text = getattr(resp, "text", "") or ""
+    if not text:
+        try:
+            parts = []
+            for c in (resp.candidates or []):
+                for p in getattr(c.content, "parts", []) or []:
+                    parts.append(getattr(p, "text", "") or "")
+            text = "\n".join([t for t in parts if t]).strip()
+        except Exception:
+            text = ""
+    return text.strip()

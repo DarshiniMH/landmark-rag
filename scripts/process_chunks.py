@@ -25,7 +25,7 @@ MANIFEST  = Path("manifests/landmarks.yaml")
 
 KEEP_RATIO     = 0.7
 CHUNK_SIZE     = 700
-CHUNK_OVERLAP  = 135
+CHUNK_OVERLAP  = 110
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size    = CHUNK_SIZE,
