@@ -114,100 +114,163 @@ Open your browser to `http://localhost:8501` and start chatting.
 The system is designed as a multi-stage pipeline optimized for precision, recall, and faithfulness.
 ```mermaid
 graph TD
-    %% Nodes Definitions
-    U[User Query] --> UI(Streamlit UI - app.py);
+  %% Nodes
+  U[User] --> SUI(Streamlit Chat UI);
 
-    subgraph Application Core [Orchestration & Logic]
-        UI --> PATH{Path Selection};
-        
-        subgraph Agentic Path [active_retriever.py]
-            direction TB
-            AGENT(ReAct Loop - LLM Reasoning) --> TOOL{Tool Selection};
-            TOOL -- search_docs --> R_LOCAL(Local Retrieval);
-            TOOL -- web_search --> R_WEB(Web Retrieval);
-            R_LOCAL -. Observation .-> AGENT;
-            R_WEB -. Observation .-> AGENT;
-        end
+  SUI --> MEM(MemoryManager<br>Buffer + Rolling Summary);
+  MEM --> REW(Query Rewriter<br>- LLM);
+  REW --> RET{Retriever};
 
-        subgraph Single-Shot Path [rag_utils.py]
-            direction TB
-            QP(Query Processing) --> RET(Retrieval Engine);
-            RET --> RANK(Reranking);
-            RANK --> PROMPT(Prompt Building);
-            PROMPT --> GEN(LLM Generation);
-        end
-        
-        %% Logic Flow
-        PATH -- Use Agent Toggle --> AGENT;
-        PATH -- Single-Shot --> QP;
-        GEN -- Context Insufficient/IDK --> FALLBACK(Web Fallback Logic);
-        FALLBACK --> R_WEB;
-        R_WEB --> PROMPT;
-    end
+  subgraph Retrieval Funnel
+    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
+    BM25(BM25 Lexical Match) --> POOL;
+    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
+    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
+    RERANK --> TOPK[Top-k Sources];
+  end
 
-    %% Detailed Retrieval Components
-    subgraph Retrieval Mechanisms
-        direction LR
-        subgraph Query Processing
-            J1(Query Expansion)
-            J2(Query Rewriting)
-        end
-        subgraph Retrieval Engine
-            K1(Hybrid Search: Dense + BM25)
-            K2(Multi-Query Fusion: RRF)
-        end
-    end
-    QP --> J1 & J2
-    RET --> K1 & K2
+  %% Vector DB Connection
+  DENSE --> CH[(ChromaDB Vector Store)];
+  CH -. Index .-> POOL;
 
-    %% Models and Data
-    subgraph Infrastructure & Data
-        direction LR
-        subgraph Models
-            LLM(OpenAI GPT-4o-mini/etc.)
-            EMBED(BGE Embedder - GPU Optimized)
-            RERANK(BGE Reranker - CPU)
-        end
-        subgraph Data Stores
-            DB[(ChromaDB Vector Store)]
-            WEB[(External Web APIs)]
-        end
-    end
+  %% Generation
+  TOPK --> PROMPT(Prompt Builder<br>Sources + Context);
+  PROMPT --> GPT(Generator - LLM);
+  GPT --> ANS(Grounded Answer<br>w/ Citations);
 
-    %% Connections to Models/Data
-    AGENT & GEN & J1 & J2 -- interacts with --> LLM;
-    K1 & R_WEB -- uses --> EMBED;
-    RANK -- uses --> RERANK;
-    R_LOCAL & K1 -- queries --> DB;
-    R_WEB -- uses --> WEB;
+  %% Fallback Logic
+  ANS --> GATE{IDK or Thin Context?};
+  GATE -- No --> OUT[Return Answer];
+  GATE -- Yes --> WEBF{Web Fallback Agent};
 
-    %% Final Output
-    AGENT -- Final Answer --> Z(Response);
-    GEN --> Z;
-    Z --> U;
+  subgraph Web Fallback (Non-Wikipedia)
+    WSEARCH(Tavily/DuckDuckGo) --> FETCH(Fetch HTML);
+    FETCH --> EXTRACT(Extract Text);
+    EXTRACT --> SPLIT(Split 700/110);
+    SPLIT --> WRANK(Embed & Rank);
+    WRANK --> WTOPK[Web Top-k];
+  end
 
-    %% Styling
-    classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
-    classDef logic fill:#f2e6ff,stroke:#333,stroke-width:2px;
-    classDef infra fill:#e6ffe6,stroke:#333,stroke-width:2px;
-    classDef detail fill:#fff2e6,stroke:#333,stroke-width:1px;
+  WTOPK --> PROMPT2(Prompt Builder - Web Sources);
+  PROMPT2 --> GPT2(Generator - LLM);
+  GPT2 --> OUT;
+  OUT --> U;
 
-    class U,UI,Z ui
-    class PATH,AGENT,TOOL,R_LOCAL,R_WEB,QP,RET,RANK,PROMPT,GEN,FALLBACK logic
-    class LLM,EMBED,RERANK,DB,WEB infra
-    class J1,J2,K1,K2 detail
+  %% Styling
+  classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
+  classDef logic fill:#f2e6ff,stroke:#333,stroke-width:2px;
+  classDef infra fill:#e6ffe6,stroke:#333,stroke-width:2px;
+  classDef detail fill:#fff2e6,stroke:#333,stroke-width:1px;
+  classDef optional fill:#ffebcc,stroke:#333,stroke-width:1px;
+
+  class U,SUI,OUT ui
+  class MEM,REW,PROMPT,GPT,ANS,GATE,PROMPT2,GPT2 logic
+  class CH infra
+  class DENSE,BM25,POOL,RERANK,TOPK,WSEARCH,FETCH,EXTRACT,SPLIT,WRANK,WTOPK detail
+  class MQ optional
 ```
 ![Architecture Diagram](architecture.png)
 *Diagram showing the flow from Query -> Memory/Rewrite -> Retrieval -> Reranking -> Generation OR Agentic Fallback.*
 
 ### 1. Data Processing & Ingestion
+```mermaid
+graph TD
+  %% Nodes
+  U[User] --> SUI(Streamlit Chat UI);
 
+  SUI --> MEM(MemoryManager<br>Buffer + Rolling Summary);
+  MEM --> REW(Query Rewriter<br>- LLM);
+  REW --> RET{Retriever};
+
+  subgraph Retrieval Funnel
+    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
+    BM25(BM25 Lexical Match) --> POOL;
+    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
+    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
+    RERANK --> TOPK[Top-k Sources];
+  end
+
+  %% Vector DB Connection
+  DENSE --> CH[(ChromaDB Vector Store)];
+  CH -. Index .-> POOL;
+
+  %% Generation
+  TOPK --> PROMPT(Prompt Builder<br>Sources + Context);
+  PROMPT --> GPT(Generator - LLM);
+  GPT --> ANS(Grounded Answer<br>w/ Citations);
+
+  %% Fallback Logic
+  ANS --> GATE{IDK or Thin Context?};
+  GATE -- No --> OUT[Return Answer];
+  GATE -- Yes --> WEBF{Web Fallback Agent};
+
+  subgraph Web Fallback (Non-Wikipedia)
+    WSEARCH(Tavily/DuckDuckGo) --> FETCH(Fetch HTML);
+    FETCH --> EXTRACT(Extract Text);
+    EXTRACT --> SPLIT(Split 700/110);
+    SPLIT --> WRANK(Embed & Rank);
+    WRANK --> WTOPK[Web Top-k];
+  end
+
+  WTOPK --> PROMPT2(Prompt Builder - Web Sources);
+  PROMPT2 --> GPT2(Generator - LLM);
+  GPT2 --> OUT;
+  OUT --> U;
+
+  %% Styling
+  classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
+  classDef logic fill:#f2e6ff,stroke:#333,stroke-width:2px;
+  classDef infra fill:#e6ffe6,stroke:#333,stroke-width:2px;
+  classDef detail fill:#fff2e6,stroke:#333,stroke-width:1px;
+  classDef optional fill:#ffebcc,stroke:#333,stroke-width:1px;
+
+  class U,SUI,OUT ui
+  class MEM,REW,PROMPT,GPT,ANS,GATE,PROMPT2,GPT2 logic
+  class CH infra
+  class DENSE,BM25,POOL,RERANK,TOPK,WSEARCH,FETCH,EXTRACT,SPLIT,WRANK,WTOPK detail
+  class MQ optional
+```
 -   **Cleaning:** Source-specific cleaners remove boilerplate (e.g., Wikipedia templates, HTML navigation).
 -   **Pruning:** A BM25-based step increases factual density by removing low-relevance sentences from article sections.
 -   **Chunking Optimization:** We used a `RecursiveCharacterTextSplitter`. Extensive experiments were conducted comparing various chunk sizes (350-800) and overlaps (85-150). The optimal configuration was found to be **Size 700, Overlap 110**, which provided the best balance of context precision and recall. (See `experiments/retriever_results.tsv` for full data).
 
 ### 2. Retrieval Pipeline
 
+```mermaid
+graph TD
+    Q[User Query] --> A(1. Query Expansion - LLM);
+    
+    A -- Optional "Accurate" Mode --> R(3. Multi-Query - LLM Rewrite);
+    
+    A & R --> HS{2. Hybrid Search};
+    
+    subgraph Search & Retrieval
+        HS -- Semantic Meaning --> V[(Vector Store)];
+        HS -- Lexical Matching --> B[(BM25 Index)];
+    end
+    
+    V & B -- Alpha 0.95 --> HYBRID(Hybrid Fusion);
+
+    HYBRID -- If Multi-Query Used --> F(4. Fusion - RRF);
+    HYBRID -- If Single-Query --> KF;
+
+    F --> KF(5. Keyword Filtering);
+    KF -- Filter Distractors --> RR(6. Re-ranking);
+    RR -- Cross-Encoder Model --> Z[Top-K Context Chunks];
+
+    %% Styling
+    classDef input fill:#e6f3ff,stroke:#333,stroke-width:2px;
+    classDef process fill:#f2e6ff,stroke:#333,stroke-width:2px;
+    classDef storage fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef decision fill:#fff2e6,stroke:#333,stroke-width:2px;
+    classDef optional fill:#ffebcc,stroke:#333,stroke-width:1px;
+
+    class Q,Z input
+    class A,HYBRID,F,KF,RR process
+    class V,B storage
+    class HS decision
+    class R optional
+```
 The retrieval process is a sophisticated funnel designed for high precision and recall:
 
 1.  **Query Expansion:** The user's query is first expanded by an LLM to include thematic keywords, improving the semantic richness of the search.
@@ -219,11 +282,75 @@ The retrieval process is a sophisticated funnel designed for high precision and 
 
 ### 3. Generation and Fallback
 
+```mermaid
+graph TD
+    A[Top-K Context Chunks] --> B(Grounded Prompt Building);
+    B --> C(LLM Generation);
+    
+    C -- Constrained Prompting<br>Cites Sources --> D{Sufficient Context?};
+    
+    D -- Yes: Faithfulness > 0.98 --> Z[Final Answer];
+    
+    D -- No: Insufficient or IDK --> E(Agentic Web Fallback);
+    
+    subgraph Agentic Fallback Loop
+        E --> F(Web Search - Tavily/etc.);
+        F --> G(Text Extraction);
+        G --> H(Chunking Web Content);
+    end
+    
+    %% Loopback for Second RAG Pass
+    H -- New Web Context --> B;
+
+    %% Styling
+    classDef input fill:#e6f3ff,stroke:#333,stroke-width:2px;
+    classDef process fill:#f2e6ff,stroke:#333,stroke-width:2px;
+    classDef decision fill:#fff2e6,stroke:#333,stroke-width:2px;
+    classDef agentic fill:#ffebcc,stroke:#333,stroke-width:2px;
+
+    class A,Z input
+    class B,C process
+    class D decision
+    class E,F,G,H agentic
+```
 -   **Grounded Generation:** The generation prompt is highly constrained. The LLM must use only the provided sources, cite every factual statement (e.g., `[Source 1]`), and state "I don't know" if the answer is not in the context. This approach increased the measured **Faithfulness score to >0.98**.
 -   **Agentic Web Fallback:** If the local context is insufficient, an agent activates. It uses a search provider (Tavily preferred), fetches the HTML, extracts clean text (using tools like `trafilatura`), chunks the content, and performs a second RAG pass on the new web context.
 
 ### 4. Conversation Memory
 
+```mermaid
+graph TD
+    Q[Current User Query] --> MGR(Memory Manager);
+    
+    subgraph Memory Components
+        direction LR
+        BUF[(Buffer - Last 4 Turns Verbatim)]
+        SUMM[(Rolling Summary - LLM Condensed History)]
+    end
+
+    MGR -- Reads Context --> BUF & SUMM;
+    
+    MGR --> RW{Follow-up Question?};
+    
+    RW -- Yes --> REWRITE(LLM Query Rewrite);
+    REWRITE -- Self-contained Query --> RET(Retrieval Pipeline);
+    
+    RW -- No --> RET;
+
+    RET -- Generates Answer --> UPD(Update Memory);
+    UPD -- Writes New Turn/Summary --> BUF & SUMM;
+
+    %% Styling
+    classDef input fill:#e6f3ff,stroke:#333,stroke-width:2px;
+    classDef process fill:#f2e6ff,stroke:#333,stroke-width:2px;
+    classDef storage fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef decision fill:#fff2e6,stroke:#333,stroke-width:2px;
+
+    class Q input
+    class MGR,REWRITE,RET,UPD process
+    class BUF,SUMM storage
+    class RW decision
+```
 -   **Buffer:** The last 4 user/assistant turns are held verbatim for immediate context.
 -   **Summary:** An LLM-generated rolling summary condenses older history.
 -   **Rewrite:** Follow-up questions are rewritten by an LLM into self-contained queries before retrieval to improve accuracy.
