@@ -144,12 +144,12 @@ graph TD
   GATE -- No --> OUT[Return Answer];
   GATE -- Yes --> WEBF{Web Fallback Agent};
 
-  subgraph Web Fallback(Non Wikipedia)
-    WSEARCH(Tavily/DuckDuckGo) --> FETCH(Fetch HTML);
-    FETCH --> EXTRACT(Extract Text);
-    EXTRACT --> SPLIT(Split 700/110);
-    SPLIT --> WRANK(Embed & Rank);
-    WRANK --> WTOPK[Web Top-k];
+  subgraph Retrieval Funnel
+    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
+    BM25(BM25 Lexical Match) --> POOL;
+    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
+    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
+    RERANK --> TOPK[Top-k Sources];
   end
 
   WTOPK --> PROMPT2(Prompt Builder - Web Sources);
