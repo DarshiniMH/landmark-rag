@@ -207,7 +207,7 @@ graph TD
 graph TD
     Q[User Query] --> A(1. Query Expansion - LLM);
     
-    A -- Optional "Accurate" Mode --> R(3. Multi-Query - LLM Rewrite);
+    A -- Optional Accurate Mode --> R(3. Multi-Query - LLM Rewrite);
     
     A & R --> HS{2. Hybrid Search};
     
