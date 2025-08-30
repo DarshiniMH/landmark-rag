@@ -112,6 +112,7 @@ Open your browser to `http://localhost:8501` and start chatting.
 ## Technical Architecture
 
 The system is designed as a multi-stage pipeline optimized for precision, recall, and faithfulness.
+
 ```mermaid
 flowchart TD
   %% Nodes
@@ -177,60 +178,24 @@ flowchart TD
 
 ```mermaid
 graph TD
-  %% Nodes
-  U[User] --> SUI(Streamlit Chat UI);
+    subgraph Data Processing and Ingestion
+        direction TB
+        A[Raw Data Sources - Wikipedia/Web] --> B(Cleaning);
+        B -- Remove Boilerplate/HTML --> C(Pruning - BM25 Based);
+        C -- Increase Factual Density --> D(Chunking);
+        D -- RecursiveCharacterTextSplitter<br>Size 700, Overlap 110 --> E(Embedding & Indexing);
+        E -- BGE Embedder Model --> F[(ChromaDB Vector Store - Dense)];
+        E -- Lexical Analysis --> G[(BM25 Index - Sparse)];
+    end
 
-  SUI --> MEM(MemoryManager<br>Buffer + Rolling Summary);
-  MEM --> REW(Query Rewriter<br>- LLM);
-  REW --> RET{Retriever};
+    %% Styling
+    classDef datasource fill:#e6f3ff,stroke:#333,stroke-width:2px;
+    classDef process fill:#f2e6ff,stroke:#333,stroke-width:2px;
+    classDef storage fill:#e6ffe6,stroke:#333,stroke-width:2px;
 
-  subgraph Retrieval Funnel
-    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
-    BM25(BM25 Lexical Match) --> POOL;
-    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
-    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
-    RERANK --> TOPK[Top-k Sources];
-  end
-
-  %% Vector DB Connection
-  DENSE --> CH[(ChromaDB Vector Store)];
-  CH -. Index .-> POOL;
-
-  %% Generation
-  TOPK --> PROMPT(Prompt Builder<br>Sources + Context);
-  PROMPT --> GPT(Generator - LLM);
-  GPT --> ANS(Grounded Answer<br>w/ Citations);
-
-  %% Fallback Logic
-  ANS --> GATE{IDK or Thin Context?};
-  GATE -- No --> OUT[Return Answer];
-  GATE -- Yes --> WEBF{Web Fallback Agent};
-
-  subgraph Web Fallback (Non-Wikipedia)
-    WSEARCH(Tavily/DuckDuckGo) --> FETCH(Fetch HTML);
-    FETCH --> EXTRACT(Extract Text);
-    EXTRACT --> SPLIT(Split 700/110);
-    SPLIT --> WRANK(Embed & Rank);
-    WRANK --> WTOPK[Web Top-k];
-  end
-
-  WTOPK --> PROMPT2(Prompt Builder - Web Sources);
-  PROMPT2 --> GPT2(Generator - LLM);
-  GPT2 --> OUT;
-  OUT --> U;
-
-  %% Styling
-  classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
-  classDef logic fill:#f2e6ff,stroke:#333,stroke-width:2px;
-  classDef infra fill:#e6ffe6,stroke:#333,stroke-width:2px;
-  classDef detail fill:#fff2e6,stroke:#333,stroke-width:1px;
-  classDef optional fill:#ffebcc,stroke:#333,stroke-width:1px;
-
-  class U,SUI,OUT ui
-  class MEM,REW,PROMPT,GPT,ANS,GATE,PROMPT2,GPT2 logic
-  class CH infra
-  class DENSE,BM25,POOL,RERANK,TOPK,WSEARCH,FETCH,EXTRACT,SPLIT,WRANK,WTOPK detail
-  class MQ optional
+    class A datasource
+    class B,C,D,E process
+    class F,G storage
 ```
 -   **Cleaning:** Source-specific cleaners remove boilerplate (e.g., Wikipedia templates, HTML navigation).
 -   **Pruning:** A BM25-based step increases factual density by removing low-relevance sentences from article sections.
@@ -273,6 +238,7 @@ graph TD
     class HS decision
     class R optional
 ```
+
 The retrieval process is a sophisticated funnel designed for high precision and recall:
 
 1.  **Query Expansion:** The user's query is first expanded by an LLM to include thematic keywords, improving the semantic richness of the search.
