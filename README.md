@@ -1,7 +1,5 @@
 # Landmark Explorer: A Hybrid RAG System with Agentic Web Fallback
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 ## Introduction
 
 Landmark Explorer is a conversational AI designed to answer complex, fact-based questions about the history, architecture, and significance of 47+ world landmarks, utilizing structured sources like Wikipedia and UNESCO.
@@ -112,66 +110,6 @@ Open your browser to `http://localhost:8501` and start chatting.
 ## Technical Architecture
 
 The system is designed as a multi-stage pipeline optimized for precision, recall, and faithfulness.
-
-```mermaid
-graph TD
-  %% Nodes
-  U[User] --> SUI(Streamlit Chat UI);
-
-  SUI --> MEM(MemoryManager<br>Buffer + Rolling Summary);
-  MEM --> REW(Query Rewriter<br>- LLM);
-  REW --> RET{Retriever};
-
-  subgraph Retrieval Funnel
-    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
-    BM25(BM25 Lexical Match) --> POOL;
-    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
-    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
-    RERANK --> TOPK[Top-k Sources];
-  end
-
-  %% Vector DB Connection
-  DENSE --> CH[(ChromaDB Vector Store)];
-  CH -. Index .-> POOL;
-
-  %% Generation
-  TOPK --> PROMPT(Prompt Builder<br>Sources + Context);
-  PROMPT --> GPT(Generator - LLM);
-  GPT --> ANS(Grounded Answer<br>w/ Citations);
-
-  %% Fallback Logic
-  ANS --> GATE{IDK or Thin Context?};
-  GATE -- No --> OUT[Return Answer];
-  GATE -- Yes --> WEBF{Web Fallback Agent};
-
-  subgraph Retrieval Funnel
-    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
-    BM25(BM25 Lexical Match) --> POOL;
-    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
-    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
-    RERANK --> TOPK[Top-k Sources];
-  end
-
-  WTOPK --> PROMPT2(Prompt Builder - Web Sources);
-  PROMPT2 --> GPT2(Generator - LLM);
-  GPT2 --> OUT;
-  OUT --> U;
-
-  %% Styling
-  classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
-  classDef logic fill:#f2e6ff,stroke:#333,stroke-width:2px;
-  classDef infra fill:#e6ffe6,stroke:#333,stroke-width:2px;
-  classDef detail fill:#fff2e6,stroke:#333,stroke-width:1px;
-  classDef optional fill:#ffebcc,stroke:#333,stroke-width:1px;
-
-  class U,SUI,OUT ui
-  class MEM,REW,PROMPT,GPT,ANS,GATE,PROMPT2,GPT2 logic
-  class CH infra
-  class DENSE,BM25,POOL,RERANK,TOPK,WSEARCH,FETCH,EXTRACT,SPLIT,WRANK,WTOPK detail
-  class MQ optional
-```
-
-*Diagram showing the flow from Query -> Memory/Rewrite -> Retrieval -> Reranking -> Generation OR Agentic Fallback.*
 
 ### 1. Data Processing & Ingestion
 
