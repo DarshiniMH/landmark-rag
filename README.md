@@ -33,7 +33,7 @@ The application features a Streamlit chat UI with conversational memory and incl
 The app allows users to chat about landmarks. Each answer provides a "Sources" expander, revealing the exact text chunks used. Users can toggle "Agentic Mode" to observe the system's reasoning and web search processes step-by-step.
 
 ![Application Demo GIF](demo/Landmark%20RAG-%20Streamlit%20app%20demo.gif)
-*A compelling GIF demonstrating the UI and the citation feature.*
+* GIF demonstrating the UI and the citation feature.*
 
 ## Getting Started
 
@@ -112,7 +112,91 @@ Open your browser to `http://localhost:8501` and start chatting.
 ## Technical Architecture
 
 The system is designed as a multi-stage pipeline optimized for precision, recall, and faithfulness.
+```mermaid
+graph TD
+    %% Nodes Definitions
+    U[User Query] --> UI(Streamlit UI - app.py);
 
+    subgraph Application Core [Orchestration & Logic]
+        UI --> PATH{Path Selection};
+        
+        subgraph Agentic Path [active_retriever.py]
+            direction TB
+            AGENT(ReAct Loop - LLM Reasoning) --> TOOL{Tool Selection};
+            TOOL -- search_docs --> R_LOCAL(Local Retrieval);
+            TOOL -- web_search --> R_WEB(Web Retrieval);
+            R_LOCAL -. Observation .-> AGENT;
+            R_WEB -. Observation .-> AGENT;
+        end
+
+        subgraph Single-Shot Path [rag_utils.py]
+            direction TB
+            QP(Query Processing) --> RET(Retrieval Engine);
+            RET --> RANK(Reranking);
+            RANK --> PROMPT(Prompt Building);
+            PROMPT --> GEN(LLM Generation);
+        end
+        
+        %% Logic Flow
+        PATH -- Use Agent Toggle --> AGENT;
+        PATH -- Single-Shot --> QP;
+        GEN -- Context Insufficient/IDK --> FALLBACK(Web Fallback Logic);
+        FALLBACK --> R_WEB;
+        R_WEB --> PROMPT;
+    end
+
+    %% Detailed Retrieval Components
+    subgraph Retrieval Mechanisms
+        direction LR
+        subgraph Query Processing
+            J1(Query Expansion)
+            J2(Query Rewriting)
+        end
+        subgraph Retrieval Engine
+            K1(Hybrid Search: Dense + BM25)
+            K2(Multi-Query Fusion: RRF)
+        end
+    end
+    QP --> J1 & J2
+    RET --> K1 & K2
+
+    %% Models and Data
+    subgraph Infrastructure & Data
+        direction LR
+        subgraph Models
+            LLM(OpenAI GPT-4o-mini/etc.)
+            EMBED(BGE Embedder - GPU Optimized)
+            RERANK(BGE Reranker - CPU)
+        end
+        subgraph Data Stores
+            DB[(ChromaDB Vector Store)]
+            WEB[(External Web APIs)]
+        end
+    end
+
+    %% Connections to Models/Data
+    AGENT & GEN & J1 & J2 -- interacts with --> LLM;
+    K1 & R_WEB -- uses --> EMBED;
+    RANK -- uses --> RERANK;
+    R_LOCAL & K1 -- queries --> DB;
+    R_WEB -- uses --> WEB;
+
+    %% Final Output
+    AGENT -- Final Answer --> Z(Response);
+    GEN --> Z;
+    Z --> U;
+
+    %% Styling
+    classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
+    classDef logic fill:#f2e6ff,stroke:#333,stroke-width:2px;
+    classDef infra fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef detail fill:#fff2e6,stroke:#333,stroke-width:1px;
+
+    class U,UI,Z ui
+    class PATH,AGENT,TOOL,R_LOCAL,R_WEB,QP,RET,RANK,PROMPT,GEN,FALLBACK logic
+    class LLM,EMBED,RERANK,DB,WEB infra
+    class J1,J2,K1,K2 detail
+```
 ![Architecture Diagram](architecture.png)
 *Diagram showing the flow from Query -> Memory/Rewrite -> Retrieval -> Reranking -> Generation OR Agentic Fallback.*
 
