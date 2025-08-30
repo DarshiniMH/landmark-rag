@@ -112,6 +112,7 @@ Open your browser to `http://localhost:8501` and start chatting.
 ## Technical Architecture
 
 The system is designed as a multi-stage pipeline optimized for precision, recall, and faithfulness.
+```mermaid
 flowchart TD
   %% Nodes
   U[User] --> SUI[Streamlit Chat UI]
@@ -168,7 +169,7 @@ flowchart TD
   class CH infra
   class DENSE,BM25,POOL,RERANK,TOPK,WSEARCH,FETCH,EXTRACT,SPLIT,WRANK,WTOPK detail
   class MQ optional
-
+```
 
 *Diagram showing the flow from Query -> Memory/Rewrite -> Retrieval -> Reranking -> Generation OR Agentic Fallback.*
 
