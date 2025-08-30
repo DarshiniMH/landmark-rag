@@ -32,7 +32,7 @@ The application features a Streamlit chat UI with conversational memory and incl
 
 The app allows users to chat about landmarks. Each answer provides a "Sources" expander, revealing the exact text chunks used. Users can toggle "Agentic Mode" to observe the system's reasoning and web search processes step-by-step.
 
-![Application Demo GIF](placeholder.gif)
+![Application Demo GIF](demo/Landmark%20RAG-%20Streamlit%20app%20demo.gif)
 *A compelling GIF demonstrating the UI and the citation feature.*
 
 ## Getting Started
