@@ -144,7 +144,7 @@ graph TD
   GATE -- No --> OUT[Return Answer];
   GATE -- Yes --> WEBF{Web Fallback Agent};
 
-  subgraph Web Fallback (Non-Wikipedia)
+  subgraph Web Fallback(Non-Wikipedia)
     WSEARCH(Tavily/DuckDuckGo) --> FETCH(Fetch HTML);
     FETCH --> EXTRACT(Extract Text);
     EXTRACT --> SPLIT(Split 700/110);
