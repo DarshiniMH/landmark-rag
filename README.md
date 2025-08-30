@@ -114,49 +114,48 @@ Open your browser to `http://localhost:8501` and start chatting.
 The system is designed as a multi-stage pipeline optimized for precision, recall, and faithfulness.
 
 ```mermaid
-flowchart TD
+graph TD
   %% Nodes
-  U[User] --> SUI[Streamlit Chat UI]
+  U[User] --> SUI(Streamlit Chat UI);
 
-  SUI --> MEM[MemoryManager: buffer + rolling summary]
-  MEM --> REW[Query rewriter (LLM)]
-  REW --> RET{Retriever}
+  SUI --> MEM(MemoryManager<br>Buffer + Rolling Summary);
+  MEM --> REW(Query Rewriter<br>- LLM);
+  REW --> RET{Retriever};
 
-  %% Retrieval funnel
-  subgraph Retrieval_Funnel
-    DENSE[Dense similarity (BGE embedder)] --> POOL
-    BM25[BM25 lexical match] --> POOL
-    MQ[Optional: multi-query + RRF fusion] --> POOL
-    POOL[(Candidate pool)] --> RERANK[Re-rank (cross-encoder or MMR)]
-    RERANK --> TOPK[Top-k sources]
+  subgraph Retrieval Funnel
+    DENSE(Dense Similarity<br>- BGE Embedder) --> POOL;
+    BM25(BM25 Lexical Match) --> POOL;
+    MQ(Optional: Multi-Query<br>+ RRF Fusion) --> POOL;
+    POOL(Candidate Pool) --> RERANK(Re-rank<br>- Cross-Encoder);
+    RERANK --> TOPK[Top-k Sources];
   end
 
-  %% Vector DB connection
-  DENSE --> CH[(ChromaDB vector store)]
-  CH -. index .-> POOL
+  %% Vector DB Connection
+  DENSE --> CH[(ChromaDB Vector Store)];
+  CH -. Index .-> POOL;
 
   %% Generation
-  TOPK --> PROMPT[Prompt builder: sources + context]
-  PROMPT --> GPT[Generator (LLM)]
-  GPT --> ANS[Grounded answer with citations]
+  TOPK --> PROMPT(Prompt Builder<br>Sources + Context);
+  PROMPT --> GPT(Generator - LLM);
+  GPT --> ANS(Grounded Answer<br>w/ Citations);
 
-  %% Fallback logic
-  ANS --> GATE{IDK or thin context?}
-  GATE -- No --> OUT[Return answer]
-  GATE -- Yes --> WEBF[Web fallback agent]
+  %% Fallback Logic
+  ANS --> GATE{IDK or Thin Context?};
+  GATE -- No --> OUT[Return Answer];
+  GATE -- Yes --> WEBF{Web Fallback Agent};
 
-  subgraph Web_Fallback_Agent
-    WSEARCH[Search (Tavily / DuckDuckGo)] --> FETCH[Fetch HTML]
-    FETCH --> EXTRACT[Extract text]
-    EXTRACT --> SPLIT[Split 700 / 110]
-    SPLIT --> WRANK[Embed & rank]
-    WRANK --> WTOPK[Web top-k]
+  subgraph Web Fallback (Non-Wikipedia)
+    WSEARCH(Tavily/DuckDuckGo) --> FETCH(Fetch HTML);
+    FETCH --> EXTRACT(Extract Text);
+    EXTRACT --> SPLIT(Split 700/110);
+    SPLIT --> WRANK(Embed & Rank);
+    WRANK --> WTOPK[Web Top-k];
   end
 
-  WTOPK --> PROMPT2[Prompt builder (web sources)]
-  PROMPT2 --> GPT2[Generator (LLM)]
-  GPT2 --> OUT
-  OUT --> U
+  WTOPK --> PROMPT2(Prompt Builder - Web Sources);
+  PROMPT2 --> GPT2(Generator - LLM);
+  GPT2 --> OUT;
+  OUT --> U;
 
   %% Styling
   classDef ui fill:#e6f3ff,stroke:#333,stroke-width:2px;
@@ -166,7 +165,7 @@ flowchart TD
   classDef optional fill:#ffebcc,stroke:#333,stroke-width:1px;
 
   class U,SUI,OUT ui
-  class MEM,REW,RET,PROMPT,GPT,ANS,GATE,PROMPT2,GPT2 logic
+  class MEM,REW,PROMPT,GPT,ANS,GATE,PROMPT2,GPT2 logic
   class CH infra
   class DENSE,BM25,POOL,RERANK,TOPK,WSEARCH,FETCH,EXTRACT,SPLIT,WRANK,WTOPK detail
   class MQ optional
